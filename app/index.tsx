@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
   FlatList,
-  TextInput,
-  Switch,
-  useColorScheme,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  useColorScheme,
+  View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../src/store';
+
+
+
 
 
 const COLOR_SWATCHES = [

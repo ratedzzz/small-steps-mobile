@@ -18,6 +18,6 @@
     "src/**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
+, "src/components/NewItemButtons.tsx"  ],
   "exclude": ["node_modules", "**/node_modules/*"]
 }
