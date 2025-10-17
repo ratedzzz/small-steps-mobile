@@ -25,7 +25,21 @@ export default function HomeScreen() {
   const [dailyQuote, setDailyQuote] = useState('');
   
   const { habits, goals, entries, pro } = useApp();
-  const theme = darkMode ? darkStyles : lightStyles;
+  
+  // Define theme colors separately (not in StyleSheet)
+  const theme = darkMode ? {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    primary: '#818CF8',
+  } : {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    primary: '#6366F1',
+  };
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
@@ -179,7 +193,7 @@ export default function HomeScreen() {
   );
 }
 
-const baseStyles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -328,24 +342,4 @@ const baseStyles = {
     fontWeight: 'bold',
     fontSize: 14,
   },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);

@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Habit, Goal, JournalEntry, Badge, ID } from './types';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { evalBadges } from './badges';
+import { Badge, Goal, Habit, JournalEntry } from './types';
 
 export const newId = () => Math.random().toString(36).slice(2, 10);
 
@@ -35,7 +35,7 @@ export const useApp = create<State>()(
         let entries = [...s.entries];
         if (i >= 0) entries[i] = { ...entries[i], ...e };
         else entries = [...entries, e];
-        const badges = evalBadges(entries, s.badges);
+        const badges = evalBadges(entries, s.habits, s.goals);
         return { entries, badges };
       }),
       archiveHabit: (id) => set((s) => ({
