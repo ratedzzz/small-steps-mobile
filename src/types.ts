@@ -15,6 +15,7 @@ export type Goal = {
   dueDate?: string;      // YYYY-MM-DD
   relatedHabitIds?: ID[];
   archived?: boolean;
+  completed?: boolean; // added: optional completed flag used by badges.ts
 };
 
 export type JournalEntry = {
@@ -28,6 +29,7 @@ export type JournalEntry = {
 export type Badge = {
   id: ID;
   name: string;
-  description: string;
+  description?: string;
   unlockedAt?: string;
+  icon?: string; // added: optional icon property for emoji or icon identifiers
 };

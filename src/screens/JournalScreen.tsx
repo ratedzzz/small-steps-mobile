@@ -14,7 +14,27 @@ import { useApp, newId } from '../store';
 export default function JournalScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  
+  // Define theme colors separately (not in StyleSheet)
+  const theme = darkMode ? {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    inputBg: '#0F172A',
+    border: '#334155',
+    placeholder: '#64748B',
+    primary: '#818CF8',
+  } : {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    inputBg: '#F8FAFC',
+    border: '#E2E8F0',
+    placeholder: '#94A3B8',
+    primary: '#6366F1',
+  };
   
   const { entries, upsertEntry } = useApp();
   const today = new Date().toISOString().split('T')[0];
@@ -93,11 +113,23 @@ export default function JournalScreen() {
   );
 }
 
-const baseStyles = {
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
-  subtitle: { fontSize: 14, marginBottom: 20 },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
   card: {
     borderRadius: 16,
     padding: 20,
@@ -108,7 +140,11 @@ const baseStyles = {
     shadowRadius: 8,
     elevation: 3,
   },
-  promptTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  promptTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
   journalInput: {
     borderWidth: 1,
     borderRadius: 12,
@@ -122,32 +158,13 @@ const baseStyles = {
     borderRadius: 12,
     alignItems: 'center',
   },
-  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
-  promptText: { fontSize: 14, lineHeight: 24 },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  inputBg: '#F8FAFC',
-  border: '#E2E8F0',
-  placeholder: '#94A3B8',
-  primary: '#6366F1',
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  promptText: {
+    fontSize: 14,
+    lineHeight: 24,
+  },
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  inputBg: '#0F172A',
-  border: '#334155',
-  placeholder: '#64748B',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);
