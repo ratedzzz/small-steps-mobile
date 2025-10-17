@@ -16,7 +16,22 @@ import * as Notifications from 'expo-notifications';
 export default function SettingsScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  
+  // Define theme colors separately (not in StyleSheet)
+  const theme = darkMode ? {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    primary: '#818CF8',
+  } : {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    primary: '#6366F1',
+  };
+  
   const { habits, goals, entries, badges, pro, setPro } = useApp();
 
   const requestNotificationPermissions = async () => {
@@ -165,10 +180,19 @@ export default function SettingsScreen() {
   );
 }
 
-const baseStyles = {
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 20 },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
   card: {
     borderRadius: 16,
     padding: 20,
@@ -179,56 +203,71 @@ const baseStyles = {
     shadowRadius: 8,
     elevation: 3,
   },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
   },
-  statLabel: { fontSize: 14 },
-  statValue: { fontSize: 14, fontWeight: '600' },
+  statLabel: {
+    fontSize: 14,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   subscriptionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  subscriptionText: { fontSize: 16, fontWeight: '600' },
+  subscriptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   upgradeButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  upgradeButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
-  proFeatures: { fontSize: 12, marginTop: 12, lineHeight: 20 },
+  upgradeButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  proFeatures: {
+    fontSize: 12,
+    marginTop: 12,
+    lineHeight: 20,
+  },
   button: {
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 8,
   },
-  buttonSecondary: { backgroundColor: '#E5E7EB' },
-  buttonDanger: { backgroundColor: '#EF4444' },
-  buttonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
-  helpText: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-  aboutText: { fontSize: 14, lineHeight: 22 },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
+  buttonSecondary: {
+    backgroundColor: '#E5E7EB',
+  },
+  buttonDanger: {
+    backgroundColor: '#EF4444',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  helpText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  aboutText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);

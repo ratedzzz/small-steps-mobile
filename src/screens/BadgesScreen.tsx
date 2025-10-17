@@ -13,7 +13,23 @@ import { useApp } from '../store';
 export default function BadgesScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  
+  // Define theme colors separately (not in StyleSheet)
+  const theme = darkMode ? {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    border: '#334155',
+    primary: '#818CF8',
+  } : {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    border: '#E2E8F0',
+    primary: '#6366F1',
+  };
   
   const { badges, entries, habits } = useApp();
 
@@ -175,11 +191,23 @@ export default function BadgesScreen() {
   );
 }
 
-const baseStyles = {
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
-  subtitle: { fontSize: 14, marginBottom: 20 },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
   statsCard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -192,10 +220,22 @@ const baseStyles = {
     shadowRadius: 8,
     elevation: 3,
   },
-  statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 32, fontWeight: 'bold' },
-  statLabel: { fontSize: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
   badgeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -220,41 +260,24 @@ const baseStyles = {
     borderWidth: 2,
     borderStyle: 'dashed',
   },
-  badgeIcon: { fontSize: 32, marginBottom: 8 },
-  badgeIconLocked: { opacity: 0.3 },
-  badgeName: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    marginBottom: 4 
+  badgeIcon: {
+    fontSize: 32,
+    marginBottom: 8,
   },
-  badgeDesc: { 
-    fontSize: 9, 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    opacity: 0.8 
+  badgeIconLocked: {
+    opacity: 0.3,
   },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  border: '#E2E8F0',
-  primary: '#6366F1',
+  badgeName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  badgeDesc: {
+    fontSize: 9,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.8,
+  },
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  border: '#334155',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);

@@ -1,5 +1,6 @@
-import React, { useState, useColorScheme } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+// src/screens/CalendarScreen.tsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useApp } from '../store';
@@ -7,13 +8,27 @@ import { useApp } from '../store';
 export default function CalendarScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  
+  // Define theme colors separately (not in StyleSheet)
+  const theme = darkMode ? {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    primary: '#818CF8',
+  } : {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    primary: '#6366F1',
+  };
   
   const { habits, goals, entries } = useApp();
   const [selectedDate, setSelectedDate] = useState('');
 
   // Build marked dates object for the calendar
-  const markedDates = {};
+  const markedDates: Record<string, any> = {};
   
   entries.forEach(entry => {
     if (entry.completed && entry.habitId) {
@@ -148,7 +163,7 @@ export default function CalendarScreen() {
   );
 }
 
-const baseStyles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -241,24 +256,4 @@ const baseStyles = {
   legendText: {
     fontSize: 16,
   },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);
