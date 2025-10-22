@@ -1,16 +1,16 @@
-// app/app.tsx - Updated with correct notification trigger type and sound property
-
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import NavigationBar from '../src/components/NavigationBar';
-import BadgesScreen from '../src/screens/BadgesScreen';
-import CalendarScreen from '../src/screens/CalendarScreen';
-import HomeScreen from '../src/screens/HomeScreen';
-import JournalScreen from '../src/screens/JournalScreen';
-import SettingsScreen from '../src/screens/SettingsScreen';
+
+import NavigationBar from '../src/components/NavigationBar'; // Fixed path
+import BadgesScreen from '../src/screens/BadgesScreen';      // Fixed path
+import CalendarScreen from '../src/screens/CalendarScreen';  // Fixed path
+import HomeScreen from '../src/screens/HomeScreen';          // Fixed path
+import JournalScreen from '../src/screens/JournalScreen';    // Fixed path
+import SettingsScreen from '../src/screens/SettingsScreen';  // Fixed path
+
 import { useApp } from '../src/store';
 
 Notifications.setNotificationHandler({
@@ -39,22 +39,19 @@ export default function App() {
   useEffect(() => {
     const scheduleNotifications = async () => {
       await Notifications.cancelAllScheduledNotificationsAsync();
-
       for (const habit of habits) {
         if (habit.reminderTime) {
           const [hours, minutes] = habit.reminderTime.split(':').map(Number);
-
           const trigger: Notifications.NotificationTriggerInput = {
             type: SchedulableTriggerInputTypes.CALENDAR,
             hour: hours,
             minute: minutes,
             repeats: true,
           };
-
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: 'Small Steps Reminder 🌟',
-              body: `Time for: ${habit.name}`,
+              title: 'Small Steps Reminder',
+              body: `Time for ${habit.name}`,
               sound: 'default',
             },
             trigger,
@@ -62,7 +59,6 @@ export default function App() {
         }
       }
     };
-
     scheduleNotifications();
   }, [habits]);
 
@@ -87,10 +83,7 @@ export default function App() {
     <SafeAreaProvider>
       <View style={styles.container}>
         {renderScreen()}
-        <NavigationBar
-          currentScreen={currentScreen}
-          onNavigate={setCurrentScreen}
-        />
+        <NavigationBar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
       </View>
     </SafeAreaProvider>
   );

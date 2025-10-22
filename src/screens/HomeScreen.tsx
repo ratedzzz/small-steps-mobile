@@ -24,7 +24,7 @@ export default function HomeScreen() {
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [dailyQuote, setDailyQuote] = useState('');
   
-  const { habits, goals, entries, pro } = useApp();
+const { habits, goals, entries, pro, setPro } = useApp();
   
   // Define theme colors separately (not in StyleSheet)
   const theme = darkMode ? {
@@ -159,19 +159,21 @@ export default function HomeScreen() {
             ))
           )}
         </View>
-
-        {/* Pro Upgrade Banner */}
+        {/*Pro Upgrade Banner */}
         {!pro && (
-          <Pressable style={[styles.proCard, { backgroundColor: '#6366F1' }]}>
+          <Pressable
+            style={[styles.proCard, { backgroundColor: '#6366F1' }]}
+            onPress={() => setPro(true)}
+          >
             <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
             <Text style={styles.proText}>
               Unlock unlimited habits, advanced analytics, and more!
             </Text>
             <View style={styles.proButton}>
-              <Text style={styles.proButtonText}>Learn More</Text>
+              <Text style={styles.proButtonText}>Unlock Now</Text>
             </View>
           </Pressable>
-        )}
+      )}
       </ScrollView>
 
       {/* Modals */}
