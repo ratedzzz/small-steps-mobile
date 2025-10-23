@@ -35,7 +35,7 @@ export const useApp = create<State>()(
         let entries = [...s.entries];
         if (i >= 0) entries[i] = { ...entries[i], ...e };
         else entries = [...entries, e];
-        const badges = evalBadges(entries, s.habits, s.goals);
+        const badges = evalBadges(entries, s.habits, s.goals, s.badges);
         return { entries, badges };
       }),
       archiveHabit: (id) => set((s) => ({
