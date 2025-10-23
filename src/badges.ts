@@ -1,8 +1,26 @@
 // src/badges.ts
-import { Badge, Habit, Goal, JournalEntry } from './types';
+import { Badge, Goal, Habit, JournalEntry } from './types';
 
-export const evalBadges = (entries: JournalEntry[], habits: Habit[], goals: Goal[]): Badge[] => {
+export const evalBadges = (
+  entries: JournalEntry[],
+  habits: Habit[],
+  goals: Goal[],
+  existingBadges: Badge[] = []
+): Badge[] => {
   const badges: Badge[] = [];
+
+  // Helper to preserve or create unlock timestamp
+  const getUnlockedAt = (badgeId: string): string => {
+    const existing = existingBadges.find(b => b.id === badgeId);
+    return existing?.unlockedAt || new Date().toISOString();
+  };
+
+  // Helper to get previous day as YYYY-MM-DD string (UTC-consistent)
+  const getPreviousDay = (dateStr: string): string => {
+    const date = new Date(dateStr + 'T00:00:00Z'); // Parse as UTC
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().split('T')[0];
+  };
 
   // First Habit Badge
   if (habits.length >= 1) {
@@ -11,7 +29,7 @@ export const evalBadges = (entries: JournalEntry[], habits: Habit[], goals: Goal
       name: 'Getting Started',
       description: 'Created your first habit',
       icon: '🌱',
-      unlockedAt: new Date().toISOString(),
+      unlockedAt: getUnlockedAt('first-habit'),
     });
   }
 
@@ -28,21 +46,25 @@ export const evalBadges = (entries: JournalEntry[], habits: Habit[], goals: Goal
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     for (const entry of sortedEntries) {
+      const entryDateStr = entry.date; // YYYY-MM-DD string
+
       if (!lastDate) {
         currentStreak = 1;
       } else {
-        const prevDay = new Date(lastDate);
-        prevDay.setDate(prevDay.getDate() - 1);
-        const entryDate = new Date(entry.date);
-
-        if (entryDate.toDateString() === prevDay.toDateString()) {
+        const expectedPrevDay = getPreviousDay(lastDate);
+        
+        if (entryDateStr === expectedPrevDay) {
+          // Consecutive day - continue streak
           currentStreak++;
-        } else if (entryDate.toDateString() !== new Date(lastDate).toDateString()) {
-          // If there's a gap, break the streak
+        } else if (entryDateStr === lastDate) {
+          // Same-day duplicate entry - skip without breaking streak
+          continue;
+        } else {
+          // Gap detected - break the streak
           break;
         }
       }
-      lastDate = entry.date;
+      lastDate = entryDateStr;
     }
     habitStreaks[habit.id] = currentStreak;
   });
@@ -54,7 +76,7 @@ export const evalBadges = (entries: JournalEntry[], habits: Habit[], goals: Goal
       name: '7 Day Streak',
       description: 'Maintained a habit for 7 days',
       icon: '🔥',
-      unlockedAt: new Date().toISOString(),
+      unlockedAt: getUnlockedAt('week-streak'),
     });
   }
 
@@ -66,7 +88,7 @@ export const evalBadges = (entries: JournalEntry[], habits: Habit[], goals: Goal
       name: 'Goal Crusher',
       description: 'Completed your first goal',
       icon: '🎯',
-      unlockedAt: new Date().toISOString(),
+      unlockedAt: getUnlockedAt('first-goal'),
     });
   }
 

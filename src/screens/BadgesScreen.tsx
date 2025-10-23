@@ -38,74 +38,17 @@ export default function BadgesScreen() {
   const uniqueDates = new Set(entries.filter(e => e.completed).map(e => e.date)).size;
   
   // Define all possible badges
-  const allBadges = [
-    {
-      id: 'first-habit',
-      icon: '🌱',
-      name: 'First Step',
-      description: 'Complete your first habit',
-      unlocked: completedHabits >= 1,
-    },
-    {
-      id: 'three-days',
-      icon: '🔥',
-      name: '3 Day Streak',
-      description: 'Complete habits 3 days in a row',
-      unlocked: uniqueDates >= 3,
-    },
-    {
-      id: 'week-warrior',
-      icon: '⭐',
-      name: 'Week Warrior',
-      description: 'Complete habits 7 days in a row',
-      unlocked: uniqueDates >= 7,
-    },
-    {
-      id: 'habit-collector',
-      icon: '📚',
-      name: 'Habit Collector',
-      description: 'Create 5 different habits',
-      unlocked: habits.length >= 5,
-    },
-    {
-      id: 'century',
-      icon: '💯',
-      name: 'Century Club',
-      description: 'Complete 100 habits total',
-      unlocked: completedHabits >= 100,
-    },
-    {
-      id: 'month-master',
-      icon: '🏆',
-      name: 'Month Master',
-      description: 'Complete habits 30 days in a row',
-      unlocked: uniqueDates >= 30,
-    },
-    {
-      id: 'dedication',
-      icon: '👑',
-      name: 'Dedication',
-      description: 'Complete habits 100 days in a row',
-      unlocked: uniqueDates >= 100,
-    },
-    {
-      id: 'consistency',
-      icon: '💪',
-      name: 'Consistency King',
-      description: 'Complete 500 habits total',
-      unlocked: completedHabits >= 500,
-    },
-  ];
 
-  const unlockedBadges = allBadges.filter(b => b.unlocked);
-  const lockedBadges = allBadges.filter(b => !b.unlocked);
+// Remove the local allBadges definition and use store badges:
+const unlockedBadges = badges.filter(b => b.unlockedAt);
+const lockedBadges = badges.filter(b => !b.unlockedAt);
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+return (
+  <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: theme.text }]}>Achievements</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {unlockedBadges.length} of {allBadges.length} badges earned
+          {unlockedBadges.length} of {badges.length} badges earned
         </Text>
 
         {/* Stats Card */}
