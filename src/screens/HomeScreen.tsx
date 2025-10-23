@@ -1,21 +1,21 @@
 // PolishedDemoScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  useColorScheme,
   Switch,
+  Text,
+  useColorScheme,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../store';
-import { getMotivationalQuote } from '../quotes';
-import AddHabitModal from '../components/AddHabitModal';
 import AddGoalModal from '../components/AddGoalModal';
-import HabitItem from '../components/HabitItem';
+import AddHabitModal from '../components/AddHabitModal';
 import GoalItem from '../components/GoalItem';
+import HabitItem from '../components/HabitItem';
+import { getMotivationalQuote } from '../quotes';
+import { useApp } from '../store';
 
 export default function HomeScreen() {
   const systemTheme = useColorScheme();
