@@ -1,28 +1,30 @@
 {
   "expo": {
-    "name": "small-steps-mobile",
+    "name": "Small Steps",
     "slug": "small-steps-mobile",
+    "scheme": "smallsteps",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smallstepsmobile",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.zheazarecor.smallsteps",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.zheazarecor.smallsteps",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": []
     },
     "web": {
       "bundler": "metro",
@@ -30,10 +32,11 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-sqlite"
     ],
-    "experiments": {
-      "typedRoutes": true
-    }
+    "experiments": { "typedRoutes": true }
   }
 }
