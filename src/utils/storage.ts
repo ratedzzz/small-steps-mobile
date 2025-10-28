@@ -1,80 +1,37 @@
-/// src/utils/storage.ts
+// src/utils/storage.ts
 
 import * as SQLite from 'expo-sqlite';
 
-/**
- * On newer Expo SDKs, expo-sqlite gives you:
- *   - openDatabaseSync(name)
- * On older, it's:
- *   - openDatabase(name)
- *
- * In Expo Go you DO have sqlite, so this should work on-device. We just
- * need to handle both shapes so it doesn't explode at runtime.
- */
-
-// Use a looser type so we can handle both shapes returned by expo-sqlite
-// (older openDatabase and newer openDatabaseSync have slightly different shapes).
 let db: any | null = null;
 
+/** Open or reuse SQLite DB connection */
 export function getDB() {
   if (db) return db;
 
-  // prefer new API if available
-  if ('openDatabaseSync' in SQLite && typeof (SQLite as any).openDatabaseSync === 'function') {
+  if (
+    'openDatabaseSync' in SQLite &&
+    typeof (SQLite as any).openDatabaseSync === 'function'
+  ) {
     db = (SQLite as any).openDatabaseSync('smallsteps.db');
-  } else if ('openDatabase' in SQLite && typeof (SQLite as any).openDatabase === 'function') {
+  } else if (
+    'openDatabase' in SQLite &&
+    typeof (SQLite as any).openDatabase === 'function'
+  ) {
     db = (SQLite as any).openDatabase('smallsteps.db');
   } else {
-    // If we ever land here, it means expo-sqlite didn't load right
-    // (for example: not installed, bad import, etc.)
     throw new Error('expo-sqlite is not available: could not open database');
   }
 
   return db!;
 }
 
-/**
- * Example helper: run a CREATE TABLE if not exists.
- * You can call this early in SettingsScreen or app startup to ensure tables exist.
- */
+/** Create tables if not exist */
 export function initSchema() {
   const database = getDB();
 
-  // If the runtime DB object supports transaction, use it so multiple statements
-  // run in a single transaction. Otherwise fall back to calling executeSql
-  // directly (some API shapes expose executeSql but not transaction).
-  if (database && typeof database.transaction === 'function') {
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `CREATE TABLE IF NOT EXISTS habits (
-          id TEXT PRIMARY KEY NOT NULL,
-          name TEXT NOT NULL,
-          color TEXT,
-          reminderTime TEXT
-        );`
-      );
-
-      tx.executeSql(
-        `CREATE TABLE IF NOT EXISTS goals (
-          id TEXT PRIMARY KEY NOT NULL,
-          name TEXT NOT NULL,
-          targetNumber REAL,
-          currentNumber REAL,
-          color TEXT
-        );`
-      );
-
-      tx.executeSql(
-        `CREATE TABLE IF NOT EXISTS journal (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL,
-          text TEXT
-        );`
-      );
-    });
-  } else if (database && typeof database.executeSql === 'function') {
-    // Fallback: call each statement individually
-    database.executeSql(
+  database.transaction((tx: any) => {
+    // Habits
+    tx.executeSql(
       `CREATE TABLE IF NOT EXISTS habits (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
@@ -83,24 +40,174 @@ export function initSchema() {
       );`
     );
 
-    database.executeSql(
+    // Goals
+    tx.executeSql(
       `CREATE TABLE IF NOT EXISTS goals (
         id TEXT PRIMARY KEY NOT NULL,
-        name TEXT NOT NULL,
-        targetNumber REAL,
-        currentNumber REAL,
-        color TEXT
+        title TEXT NOT NULL,
+        color TEXT,
+        dueDate TEXT
       );`
     );
 
-    database.executeSql(
+    // Journal
+    tx.executeSql(
       `CREATE TABLE IF NOT EXISTS journal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
         text TEXT
       );`
     );
-  } else {
-    throw new Error('Opened database does not expose transaction or executeSql methods');
-  }
+  });
+}
+
+/* -----------------------------
+   HABITS HELPERS
+------------------------------*/
+
+export function insertHabit(habit: {
+  id: string;
+  name: string;
+  color?: string;
+  reminderTime?: string;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `INSERT INTO habits (id, name, color, reminderTime) VALUES (?, ?, ?, ?);`,
+        [habit.id, habit.name, habit.color || null, habit.reminderTime || null],
+        () => resolve(),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+export function getAllHabits(): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `SELECT * FROM habits ORDER BY name ASC;`,
+        [],
+        (_: any, { rows }: any) => resolve(rows._array || []),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+export function deleteHabit(id: string) {
+  return new Promise<void>((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `DELETE FROM habits WHERE id = ?;`,
+        [id],
+        () => resolve(),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+/* -----------------------------
+   GOALS HELPERS
+------------------------------*/
+
+export function insertGoal(goal: {
+  id: string;
+  title: string;
+  color?: string;
+  dueDate?: string;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `INSERT INTO goals (id, title, color, dueDate) VALUES (?, ?, ?, ?);`,
+        [goal.id, goal.title, goal.color || null, goal.dueDate || null],
+        () => resolve(),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+export function getAllGoals(): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `SELECT * FROM goals ORDER BY title ASC;`,
+        [],
+        (_: any, { rows }: any) => resolve(rows._array || []),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+export function deleteGoal(id: string) {
+  return new Promise<void>((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(
+        `DELETE FROM goals WHERE id = ?;`,
+        [id],
+        () => resolve(),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+/* -----------------------------
+   JOURNAL HELPERS (optional expansion later)
+------------------------------*/
+// we can add insertJournalEntry/getEntries/etc later if we want
+
+/* -----------------------------
+   EXPORT / ERASE HELPERS
+------------------------------*/
+
+/**
+ * exportJson()
+ * Read all current data so Settings can let the user "export my data".
+ * This returns habits, goals, and later we can include journal entries.
+ */
+export async function exportJson() {
+  const [habits, goals] = await Promise.all([getAllHabits(), getAllGoals()]);
+  return {
+    habits,
+    goals,
+    // journal: [] // add later if we also persist journal in SQLite
+  };
+}
+
+/**
+ * eraseAll()
+ * Wipe all app data from SQLite. We'll call this from Settings.
+ * NOTE: After calling this, you'll also want to clear Zustand state in-memory.
+ */
+export function eraseAll() {
+  return new Promise<void>((resolve, reject) => {
+    const db = getDB();
+    db.transaction((tx: any) => {
+      tx.executeSql(`DELETE FROM habits;`);
+      tx.executeSql(`DELETE FROM goals;`);
+      tx.executeSql(`DELETE FROM journal;`);
+
+      // If you later add tables like 'progress' etc, wipe them here too.
+
+      // On success, resolve after transaction completes
+    },
+    (err: any) => {
+      reject(err);
+    },
+    () => {
+      resolve();
+    });
+  });
 }

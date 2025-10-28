@@ -4,30 +4,29 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// pull something from the store to ensure it initializes on app load
 import { useApp } from '../src/store';
-
-// our safe notifications setup
+import { initSchema } from '../src/utils/storage';
 import { configureNotifications } from '../src/utils/notifications';
 
 export default function RootLayout() {
-  // We touch the store here so it hydrates when the app boots.
-  // If you don't actually need habits here, it's still fine to read them.
-  const { habits } = useApp();
+  // We grab loadFromDB from the store so we can call it on startup.
+  const loadFromDB = useApp((s) => s.loadFromDB);
 
   useEffect(() => {
-    // Ask for notif permissions, set channel, etc.
-    // This will gracefully no-op in Expo Go Android dev,
-    // because we wrote notifications.ts to detect that case.
+    // 1. Make sure our tables exist. Safe to call multiple times.
+    initSchema();
+
+    // 2. Hydrate Zustand from SQLite (habits, goals, badges)
+    //    This also reschedules notifications for habits with reminderTime.
+    loadFromDB();
+
+    // 3. Prepare notifications: permissions, channels, handler.
     configureNotifications();
-  }, []);
+  }, [loadFromDB]);
 
   return (
     <SafeAreaProvider>
-      {/* 
-        Stack is the navigator that expo-router uses to render routes
-        from files in /app. headerShown: false = we’ll draw our own UI.
-      */}
+      {/* expo-router stack. We hide the native header and draw our own UI instead. */}
       <Stack screenOptions={{ headerShown: false }} />
     </SafeAreaProvider>
   );
