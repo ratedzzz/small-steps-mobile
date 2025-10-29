@@ -70,19 +70,9 @@ export const useApp = create<State>((set, get) => ({
     });
   },
 
-  /**
-   * loadFromDB()
-   * - ensure schema exists
-   * - fetch habits/goals/journal from SQLite
-   * - recompute badges
-   * - push everything into Zustand
-   * - reschedule habit reminders
-   */
+ 
   loadFromDB: async () => {
-    // 1. Make sure our tables exist
-    initSchema();
-
-    // 2. Read from SQLite
+    
     const [habitsRows, goalsRows, journalRowsRaw] = await Promise.all([
       getAllHabits(),
       getAllGoals(),

@@ -1,268 +1,139 @@
-import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let db: any | null = null;
+// Storage keys
+const HABITS_KEY = 'habits';
+const GOALS_KEY = 'goals';
+const JOURNAL_KEY = 'journal';
 
-// Helper: do we have a working sqlite connection object
-function hasWorkingDB() {
-  return db && typeof db.transaction === 'function';
-}
-
-/** Open or reuse SQLite DB connection */
-export function getDB() {
-  if (db) return db;
-
-  try {
-    if (
-      'openDatabaseSync' in SQLite &&
-      typeof (SQLite as any).openDatabaseSync === 'function'
-    ) {
-      db = (SQLite as any).openDatabaseSync('smallsteps.db');
-    } else if (
-      'openDatabase' in SQLite &&
-      typeof (SQLite as any).openDatabase === 'function'
-    ) {
-      db = (SQLite as any).openDatabase('smallsteps.db');
-    } else {
-      // expo-sqlite not available in this runtime
-      db = null;
-    }
-  } catch (err) {
-    console.warn('getDB() failed to open sqlite db:', err);
-    db = null;
-  }
-
-  return db;
-}
-
-/** Create tables if not exist */
+/** No-op for AsyncStorage - schema is implicit in JSON structure */
 export function initSchema() {
-  const database = getDB();
+  // AsyncStorage doesn't need schema initialization
+  // This function exists just to keep the same API
+  console.log('[storage] Using AsyncStorage (no schema needed)');
+}
 
-  if (!database || typeof database.transaction !== 'function') {
-    // We are probably in Expo Go without sqlite native module.
-    console.warn(
-      '[storage] initSchema skipped: expo-sqlite not available in this environment'
-    );
-    return;
-  }
-
-  database.transaction((tx: any) => {
-    // Habits
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS habits (
-        id TEXT PRIMARY KEY NOT NULL,
-        name TEXT NOT NULL,
-        color TEXT,
-        reminderTime TEXT
-      );`
-    );
-
-    // Goals
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS goals (
-        id TEXT PRIMARY KEY NOT NULL,
-        title TEXT NOT NULL,
-        color TEXT,
-        dueDate TEXT
-      );`
-    );
-
-    // Journal
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS journal (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        text TEXT,
-        habitId TEXT
-      );`
-    );
-  });
+/** No-op - kept for API compatibility */
+export function getDB() {
+  return null;
 }
 
 /* =============================
    HABITS HELPERS
 =============================*/
 
-export function insertHabit(habit: {
+export async function insertHabit(habit: {
   id: string;
   name: string;
   color?: string;
   reminderTime?: string | null;
-}) {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] insertHabit skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `INSERT INTO habits (id, name, color, reminderTime) VALUES (?, ?, ?, ?);`,
-        [habit.id, habit.name, habit.color || null, habit.reminderTime || null],
-        () => resolve(),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+}): Promise<void> {
+  try {
+    const existing = await AsyncStorage.getItem(HABITS_KEY);
+    const habits = existing ? JSON.parse(existing) : [];
+    habits.push(habit);
+    await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(habits));
+  } catch (err) {
+    console.warn('[storage] insertHabit error:', err);
+  }
 }
 
-export function getAllHabits(): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] getAllHabits fallback (no sqlite), returning []');
-      resolve([]);
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `SELECT * FROM habits ORDER BY name ASC;`,
-        [],
-        (_: any, { rows }: any) => resolve(rows._array || []),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+export async function getAllHabits(): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(HABITS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (err) {
+    console.warn('[storage] getAllHabits error:', err);
+    return [];
+  }
 }
 
-export function deleteHabit(id: string) {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] deleteHabit skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `DELETE FROM habits WHERE id = ?;`,
-        [id],
-        () => resolve(),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+export async function deleteHabit(id: string): Promise<void> {
+  try {
+    const existing = await AsyncStorage.getItem(HABITS_KEY);
+    const habits = existing ? JSON.parse(existing) : [];
+    const filtered = habits.filter((h: any) => h.id !== id);
+    await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('[storage] deleteHabit error:', err);
+  }
 }
 
 /* =============================
    GOALS HELPERS
 =============================*/
 
-export function insertGoal(goal: {
+export async function insertGoal(goal: {
   id: string;
   title: string;
   color?: string;
   dueDate?: string;
-}) {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] insertGoal skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `INSERT INTO goals (id, title, color, dueDate) VALUES (?, ?, ?, ?);`,
-        [goal.id, goal.title, goal.color || null, goal.dueDate || null],
-        () => resolve(),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+}): Promise<void> {
+  try {
+    const existing = await AsyncStorage.getItem(GOALS_KEY);
+    const goals = existing ? JSON.parse(existing) : [];
+    goals.push(goal);
+    await AsyncStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+  } catch (err) {
+    console.warn('[storage] insertGoal error:', err);
+  }
 }
 
-export function getAllGoals(): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] getAllGoals fallback (no sqlite), returning []');
-      resolve([]);
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `SELECT * FROM goals ORDER BY title ASC;`,
-        [],
-        (_: any, { rows }: any) => resolve(rows._array || []),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+export async function getAllGoals(): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(GOALS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (err) {
+    console.warn('[storage] getAllGoals error:', err);
+    return [];
+  }
 }
 
-export function deleteGoal(id: string) {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] deleteGoal skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `DELETE FROM goals WHERE id = ?;`,
-        [id],
-        () => resolve(),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+export async function deleteGoal(id: string): Promise<void> {
+  try {
+    const existing = await AsyncStorage.getItem(GOALS_KEY);
+    const goals = existing ? JSON.parse(existing) : [];
+    const filtered = goals.filter((g: any) => g.id !== id);
+    await AsyncStorage.setItem(GOALS_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('[storage] deleteGoal error:', err);
+  }
 }
 
 /* =============================
    JOURNAL HELPERS
 =============================*/
 
-export function insertJournalEntry(entry: {
+export async function insertJournalEntry(entry: {
   date: string;
   habitId?: string;
   text?: string;
-}) {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] insertJournalEntry skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `INSERT INTO journal (date, text, habitId) VALUES (?, ?, ?);`,
-        [entry.date, entry.text || null, entry.habitId || null],
-        () => resolve(),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+}): Promise<void> {
+  try {
+    const existing = await AsyncStorage.getItem(JOURNAL_KEY);
+    const journal = existing ? JSON.parse(existing) : [];
+    
+    // Add auto-incrementing id
+    const maxId = journal.length > 0 
+      ? Math.max(...journal.map((e: any) => e.id || 0))
+      : 0;
+    
+    journal.push({ ...entry, id: maxId + 1 });
+    await AsyncStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+  } catch (err) {
+    console.warn('[storage] insertJournalEntry error:', err);
+  }
 }
 
-export function getAllJournalEntries(): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] getAllJournalEntries fallback (no sqlite), returning []');
-      resolve([]);
-      return;
-    }
-
-    database.transaction((tx: any) => {
-      tx.executeSql(
-        `SELECT id, date, text, habitId FROM journal ORDER BY date DESC;`,
-        [],
-        (_: any, { rows }: any) => resolve(rows._array || []),
-        (_: any, err: any) => reject(err)
-      );
-    });
-  });
+export async function getAllJournalEntries(): Promise<any[]> {
+  try {
+    const data = await AsyncStorage.getItem(JOURNAL_KEY);
+    const entries = data ? JSON.parse(data) : [];
+    // Sort by date DESC (most recent first)
+    return entries.sort((a: any, b: any) => b.date.localeCompare(a.date));
+  } catch (err) {
+    console.warn('[storage] getAllJournalEntries error:', err);
+    return [];
+  }
 }
 
 /* =============================
@@ -270,8 +141,11 @@ export function getAllJournalEntries(): Promise<any[]> {
 =============================*/
 
 export async function exportJson() {
-  const [habits, goals] = await Promise.all([getAllHabits(), getAllGoals()]);
-  const journal = await getAllJournalEntries();
+  const [habits, goals, journal] = await Promise.all([
+    getAllHabits(),
+    getAllGoals(),
+    getAllJournalEntries(),
+  ]);
   return {
     habits,
     goals,
@@ -279,27 +153,10 @@ export async function exportJson() {
   };
 }
 
-export function eraseAll() {
-  return new Promise<void>((resolve, reject) => {
-    const database = getDB();
-    if (!database || typeof database.transaction !== 'function') {
-      console.warn('[storage] eraseAll skipped (no sqlite)');
-      resolve();
-      return;
-    }
-
-    database.transaction(
-      (tx: any) => {
-        tx.executeSql(`DELETE FROM habits;`);
-        tx.executeSql(`DELETE FROM goals;`);
-        tx.executeSql(`DELETE FROM journal;`);
-      },
-      (err: any) => {
-        reject(err);
-      },
-      () => {
-        resolve();
-      }
-    );
-  });
+export async function eraseAll(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([HABITS_KEY, GOALS_KEY, JOURNAL_KEY]);
+  } catch (err) {
+    console.warn('[storage] eraseAll error:', err);
+  }
 }
