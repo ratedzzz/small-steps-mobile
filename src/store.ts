@@ -3,21 +3,19 @@ import { evalBadges } from './badges';
 import { Badge, Goal, Habit, JournalEntry } from './types';
 
 import {
-  initSchema,
-  insertHabit,
-  insertGoal,
-  getAllHabits,
-  getAllGoals,
-  getAllJournalEntries,
-  insertJournalEntry,
-  deleteHabit,
   deleteGoal,
+  deleteHabit,
+  getAllGoals,
+  getAllHabits,
+  getAllJournalEntries,
+  insertGoal,
+  insertHabit,
+  insertJournalEntry
 } from './utils/storage';
 
 import {
-  scheduleHabitReminder,
   rescheduleAll,
-  // cancelHabitReminder, // TODO: implement in utils/notifications if you want
+  scheduleHabitReminder,
 } from './utils/notifications';
 
 // simple id generator for habits/goals etc.
