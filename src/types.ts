@@ -4,7 +4,10 @@ export type Habit = {
   id: ID;
   name: string;
   color: string;
-  reminderTime?: string; // "07:30"
+
+  // allow null at runtime, but sometimes we'll pass undefined first then normalize
+  reminderTime?: string | null; // "07:30" or null if no reminder set
+
   archived?: boolean;
 };
 
@@ -15,15 +18,18 @@ export type Goal = {
   dueDate?: string;      // YYYY-MM-DD
   relatedHabitIds?: ID[];
   archived?: boolean;
-  completed?: boolean; // added: optional completed flag used by badges.ts
+  completed?: boolean;   // optional, used by badges.ts etc.
 };
 
 export type JournalEntry = {
-  id: ID;
+  // Optional because new entries get an id from SQLite (AUTOINCREMENT).
+  // Can be a string (if we ever generate IDs) or number (from SQLite rowid).
+  id?: ID | number;
+
   date: string;          // YYYY-MM-DD
-  habitId?: ID;          // undefined => general day note
-  text?: string;
-  completed?: boolean;
+  habitId?: ID;          // if undefined, it's a general note about the day
+  text?: string;         // freeform note OR placeholder like "completed"
+  completed?: boolean;   // true if user checked off the habit for that date
 };
 
 export type Badge = {
@@ -31,5 +37,5 @@ export type Badge = {
   name: string;
   description?: string;
   unlockedAt?: string;
-  icon?: string; // added: optional icon property for emoji or icon identifiers
+  icon?: string; // emoji / asset ref
 };

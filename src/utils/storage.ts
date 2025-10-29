@@ -1,33 +1,50 @@
-// src/utils/storage.ts
-
 import * as SQLite from 'expo-sqlite';
 
 let db: any | null = null;
+
+// Helper: do we have a working sqlite connection object
+function hasWorkingDB() {
+  return db && typeof db.transaction === 'function';
+}
 
 /** Open or reuse SQLite DB connection */
 export function getDB() {
   if (db) return db;
 
-  if (
-    'openDatabaseSync' in SQLite &&
-    typeof (SQLite as any).openDatabaseSync === 'function'
-  ) {
-    db = (SQLite as any).openDatabaseSync('smallsteps.db');
-  } else if (
-    'openDatabase' in SQLite &&
-    typeof (SQLite as any).openDatabase === 'function'
-  ) {
-    db = (SQLite as any).openDatabase('smallsteps.db');
-  } else {
-    throw new Error('expo-sqlite is not available: could not open database');
+  try {
+    if (
+      'openDatabaseSync' in SQLite &&
+      typeof (SQLite as any).openDatabaseSync === 'function'
+    ) {
+      db = (SQLite as any).openDatabaseSync('smallsteps.db');
+    } else if (
+      'openDatabase' in SQLite &&
+      typeof (SQLite as any).openDatabase === 'function'
+    ) {
+      db = (SQLite as any).openDatabase('smallsteps.db');
+    } else {
+      // expo-sqlite not available in this runtime
+      db = null;
+    }
+  } catch (err) {
+    console.warn('getDB() failed to open sqlite db:', err);
+    db = null;
   }
 
-  return db!;
+  return db;
 }
 
 /** Create tables if not exist */
 export function initSchema() {
   const database = getDB();
+
+  if (!database || typeof database.transaction !== 'function') {
+    // We are probably in Expo Go without sqlite native module.
+    console.warn(
+      '[storage] initSchema skipped: expo-sqlite not available in this environment'
+    );
+    return;
+  }
 
   database.transaction((tx: any) => {
     // Habits
@@ -55,25 +72,32 @@ export function initSchema() {
       `CREATE TABLE IF NOT EXISTS journal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
-        text TEXT
+        text TEXT,
+        habitId TEXT
       );`
     );
   });
 }
 
-/* -----------------------------
+/* =============================
    HABITS HELPERS
-------------------------------*/
+=============================*/
 
 export function insertHabit(habit: {
   id: string;
   name: string;
   color?: string;
-  reminderTime?: string;
+  reminderTime?: string | null;
 }) {
   return new Promise<void>((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] insertHabit skipped (no sqlite)');
+      resolve();
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `INSERT INTO habits (id, name, color, reminderTime) VALUES (?, ?, ?, ?);`,
         [habit.id, habit.name, habit.color || null, habit.reminderTime || null],
@@ -86,8 +110,14 @@ export function insertHabit(habit: {
 
 export function getAllHabits(): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] getAllHabits fallback (no sqlite), returning []');
+      resolve([]);
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `SELECT * FROM habits ORDER BY name ASC;`,
         [],
@@ -100,8 +130,14 @@ export function getAllHabits(): Promise<any[]> {
 
 export function deleteHabit(id: string) {
   return new Promise<void>((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] deleteHabit skipped (no sqlite)');
+      resolve();
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `DELETE FROM habits WHERE id = ?;`,
         [id],
@@ -112,9 +148,9 @@ export function deleteHabit(id: string) {
   });
 }
 
-/* -----------------------------
+/* =============================
    GOALS HELPERS
-------------------------------*/
+=============================*/
 
 export function insertGoal(goal: {
   id: string;
@@ -123,8 +159,14 @@ export function insertGoal(goal: {
   dueDate?: string;
 }) {
   return new Promise<void>((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] insertGoal skipped (no sqlite)');
+      resolve();
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `INSERT INTO goals (id, title, color, dueDate) VALUES (?, ?, ?, ?);`,
         [goal.id, goal.title, goal.color || null, goal.dueDate || null],
@@ -137,8 +179,14 @@ export function insertGoal(goal: {
 
 export function getAllGoals(): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] getAllGoals fallback (no sqlite), returning []');
+      resolve([]);
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `SELECT * FROM goals ORDER BY title ASC;`,
         [],
@@ -151,8 +199,14 @@ export function getAllGoals(): Promise<any[]> {
 
 export function deleteGoal(id: string) {
   return new Promise<void>((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] deleteGoal skipped (no sqlite)');
+      resolve();
+      return;
+    }
+
+    database.transaction((tx: any) => {
       tx.executeSql(
         `DELETE FROM goals WHERE id = ?;`,
         [id],
@@ -163,51 +217,89 @@ export function deleteGoal(id: string) {
   });
 }
 
-/* -----------------------------
-   JOURNAL HELPERS (optional expansion later)
-------------------------------*/
-// we can add insertJournalEntry/getEntries/etc later if we want
+/* =============================
+   JOURNAL HELPERS
+=============================*/
 
-/* -----------------------------
+export function insertJournalEntry(entry: {
+  date: string;
+  habitId?: string;
+  text?: string;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] insertJournalEntry skipped (no sqlite)');
+      resolve();
+      return;
+    }
+
+    database.transaction((tx: any) => {
+      tx.executeSql(
+        `INSERT INTO journal (date, text, habitId) VALUES (?, ?, ?);`,
+        [entry.date, entry.text || null, entry.habitId || null],
+        () => resolve(),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+export function getAllJournalEntries(): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] getAllJournalEntries fallback (no sqlite), returning []');
+      resolve([]);
+      return;
+    }
+
+    database.transaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, date, text, habitId FROM journal ORDER BY date DESC;`,
+        [],
+        (_: any, { rows }: any) => resolve(rows._array || []),
+        (_: any, err: any) => reject(err)
+      );
+    });
+  });
+}
+
+/* =============================
    EXPORT / ERASE HELPERS
-------------------------------*/
+=============================*/
 
-/**
- * exportJson()
- * Read all current data so Settings can let the user "export my data".
- * This returns habits, goals, and later we can include journal entries.
- */
 export async function exportJson() {
   const [habits, goals] = await Promise.all([getAllHabits(), getAllGoals()]);
+  const journal = await getAllJournalEntries();
   return {
     habits,
     goals,
-    // journal: [] // add later if we also persist journal in SQLite
+    journal,
   };
 }
 
-/**
- * eraseAll()
- * Wipe all app data from SQLite. We'll call this from Settings.
- * NOTE: After calling this, you'll also want to clear Zustand state in-memory.
- */
 export function eraseAll() {
   return new Promise<void>((resolve, reject) => {
-    const db = getDB();
-    db.transaction((tx: any) => {
-      tx.executeSql(`DELETE FROM habits;`);
-      tx.executeSql(`DELETE FROM goals;`);
-      tx.executeSql(`DELETE FROM journal;`);
-
-      // If you later add tables like 'progress' etc, wipe them here too.
-
-      // On success, resolve after transaction completes
-    },
-    (err: any) => {
-      reject(err);
-    },
-    () => {
+    const database = getDB();
+    if (!database || typeof database.transaction !== 'function') {
+      console.warn('[storage] eraseAll skipped (no sqlite)');
       resolve();
-    });
+      return;
+    }
+
+    database.transaction(
+      (tx: any) => {
+        tx.executeSql(`DELETE FROM habits;`);
+        tx.executeSql(`DELETE FROM goals;`);
+        tx.executeSql(`DELETE FROM journal;`);
+      },
+      (err: any) => {
+        reject(err);
+      },
+      () => {
+        resolve();
+      }
+    );
   });
 }
