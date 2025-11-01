@@ -1,43 +1,30 @@
-// src/utils/notifications.ts
-
+/// src/utils/notifications.ts
 import { Platform } from 'react-native';
 
 /**
- * We can't safely import expo-notifications at the top level in Expo Go Android (SDK 53+)
- * because just touching the module tries to set up push tokens, which crashes.
- *
- * So we try to require() it at runtime. If that fails or we're in a known-broken
- * environment (Expo Go on Android), we fall back to a no-op shim.
+ * We load expo-notifications lazily at runtime to avoid crashes
+ * in Expo Go on Android (SDK 53+).
  */
-
 let Notifications: typeof import('expo-notifications') | null = null;
 
 function getNotificationsModule() {
   if (Notifications) return Notifications;
-
   try {
-    // Dynamically load the module.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Notifications = require('expo-notifications');
-  } catch (e) {
+  } catch {
     Notifications = null;
   }
-
   return Notifications;
 }
 
 /**
- * Detect an environment where scheduling real push/local notifications
- * will either throw or spam errors (Expo Go on Android after SDK 53).
- *
- * In that environment we "pretend" to succeed so the rest of the app UI can run.
+ * In Expo Go on Android (especially in dev), notifications can be unreliable.
+ * When blocked, we no-op so the rest of the app works.
  */
 function notificationsBlockedInThisEnv() {
-  // Android + dev mode is the main trouble spot for Expo Go.
-  // This lets you preview the app UI without crashing.
-  if (Platform.OS === 'android' && __DEV__) {
-    return true;
-  }
+  // You can tighten/relax this rule if you build a dev client.
+  if (Platform.OS === 'android' && __DEV__) return true;
   return false;
 }
 
@@ -48,7 +35,10 @@ function notificationsBlockedInThisEnv() {
 export type HabitForReminder = {
   id: string;
   name: string;
-  reminderTime?: string | null; // "HH:MM" 24h
+  /**
+   * "HH:MM" (24-hour). If missing/invalid => no reminder.
+   */
+  reminderTime?: string | null;
 };
 
 // --------------------------------------------------
@@ -57,15 +47,28 @@ export type HabitForReminder = {
 
 function parseHHMM(s?: string | null): { hour: number; minute: number } | null {
   if (!s) return null;
-  const ok = /^\d{2}:\d{2}$/.test(s);
-  if (!ok) return null;
-  const [h, m] = s.split(':').map(Number);
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return { hour: h, minute: m };
+  // allow "7:05" or "07:05"
+  const m = /^([0-1]?\d|2[0-3]):([0-5]\d)$/.exec(s.trim());
+  if (!m) return null;
+  const hour = parseInt(m[1], 10);
+  const minute = parseInt(m[2], 10);
+  return { hour, minute };
 }
 
-function habitTriggerId(habitId: string) {
-  return `habit-${habitId}-daily`;
+/**
+ * Compare a parsed time with a calendar trigger (best-effort).
+ */
+function triggerMatchesTime(
+  trig: any,
+  hour: number,
+  minute: number
+): boolean {
+  if (!trig) return false;
+  // Calendar triggers typically have hour/minute + repeats: true
+  if (typeof trig.hour === 'number' && typeof trig.minute === 'number') {
+    return trig.hour === hour && trig.minute === minute && !!trig.repeats;
+  }
+  return false;
 }
 
 // --------------------------------------------------
@@ -73,32 +76,24 @@ function habitTriggerId(habitId: string) {
 // --------------------------------------------------
 
 /**
- * configureNotifications()
- *
- * - Ask permission (iOS and Android dev builds)
- * - Create Android channel
- * - Set global notification handler (sound, banner, etc)
- *
- * Safe to call at app startup.
+ * Call once at startup (e.g., in app/_layout.tsx useEffect).
+ * - Requests permission
+ * - Creates Android channel
+ * - Sets a foreground handler
  */
 export async function configureNotifications() {
-  // If we're in an env that can't really do notifications, just no-op
-  if (notificationsBlockedInThisEnv()) {
-    return;
-  }
+  if (notificationsBlockedInThisEnv()) return;
 
   const N = getNotificationsModule();
-  if (!N) {
-    return;
-  }
+  if (!N) return;
 
-  // Permissions
-  const settings = await N.getPermissionsAsync();
-  if (settings.status !== 'granted') {
+  // Ask for permissions
+  const { status } = await N.getPermissionsAsync();
+  if (status !== 'granted') {
     await N.requestPermissionsAsync();
   }
 
-  // Android channel (local notifications need a channel on Android)
+  // Android channel
   if (Platform.OS === 'android') {
     await N.setNotificationChannelAsync('habits-default', {
       name: 'Habit Reminders',
@@ -109,13 +104,13 @@ export async function configureNotifications() {
     });
   }
 
-  // Global handler (how notifications behave when received in foreground)
+  // Foreground behavior
   N.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
-      // newer SDK types:
+      // Newer SDK flags (ignored where unsupported)
       shouldShowBanner: true,
       shouldShowList: true,
     }),
@@ -123,85 +118,131 @@ export async function configureNotifications() {
 }
 
 /**
- * scheduleHabitReminder(habit)
- *
- * Sets up (or re-sets up) a repeating daily reminder at HH:MM for that habit.
- * If habit.reminderTime is invalid or missing, we silently skip.
+ * Schedules (or re-schedules) a daily reminder for a habit at HH:MM.
+ * We tag it with content.data.hId so we can find & cancel it later.
  */
 export async function scheduleHabitReminder(habit: HabitForReminder) {
-  if (notificationsBlockedInThisEnv()) {
-    // Pretend success in Expo Go Android dev.
-    return;
-  }
+  if (notificationsBlockedInThisEnv()) return;
 
   const N = getNotificationsModule();
-  if (!N) {
-    return;
-  }
+  if (!N) return;
 
   const parsed = parseHHMM(habit.reminderTime);
   if (!parsed) return;
 
-  // First, try to cancel any previous instance using the same identifier.
-  try {
-    await N.cancelScheduledNotificationAsync(habitTriggerId(habit.id));
-  } catch {
-    // ignore if it didn't exist yet
-  }
+  // Cancel any existing reminders for this habit first (based on hId tag)
+  await cancelHabitReminder(habit.id);
 
   await N.scheduleNotificationAsync({
-    // identifier: stable id so we can cancel/reschedule later
-    identifier: habitTriggerId(habit.id),
     content: {
       title: 'Small Steps',
       body: `Time for: ${habit.name}`,
       sound: 'default',
+      data: { hId: habit.id, kind: 'habit' }, // <-- tag for future lookups
     },
+    // Calendar trigger that repeats every day at hour:minute
     trigger: {
-      type: N.SchedulableTriggerInputTypes.CALENDAR,
       hour: parsed.hour,
       minute: parsed.minute,
       repeats: true,
-      channelId: Platform.OS === 'android' ? 'habits-default' : undefined,
+      ...(Platform.OS === 'android' ? { channelId: 'habits-default' } : {}),
     } as import('expo-notifications').CalendarTriggerInput,
   });
 }
 
 /**
- * cancelHabitReminder(habitId)
- *
- * Removes a scheduled daily reminder for a habit.
+ * Cancels scheduled reminders for a specific habit by scanning
+ * scheduled notifications that carry data.hId === habitId.
  */
 export async function cancelHabitReminder(habitId: string) {
-  if (notificationsBlockedInThisEnv()) {
-    return;
-  }
+  if (notificationsBlockedInThisEnv()) return;
 
   const N = getNotificationsModule();
-  if (!N) {
-    return;
-  }
+  if (!N) return;
 
   try {
-    await N.cancelScheduledNotificationAsync(habitTriggerId(habitId));
+    const scheduled = await N.getAllScheduledNotificationsAsync();
+    for (const item of scheduled) {
+      const hId = (item as any)?.content?.data?.hId;
+      if (hId === habitId) {
+        await N.cancelScheduledNotificationAsync(item.identifier);
+      }
+    }
   } catch {
-    // it's fine if it wasn't scheduled
+    // Ignore
   }
 }
 
 /**
- * rescheduleAll(habits)
- *
- * Convenience: loop through all habits at app start or after bulk edits.
- * - If a habit has a reminderTime, schedule it.
- * - If not, cancel its reminder.
+ * Bulk rebuild. For each habit:
+ * - if it has a valid time => ensure exactly one scheduled reminder at that time
+ * - if no/invalid time => cancel any existing
  */
 export async function rescheduleAll(habits: HabitForReminder[]) {
-  for (const h of habits) {
-    if (h.reminderTime) {
-      await scheduleHabitReminder(h);
-    } else {
-      await cancelHabitReminder(h.id);
+  if (notificationsBlockedInThisEnv()) return;
+
+  const N = getNotificationsModule();
+  if (!N) return;
+
+  try {
+    const scheduled = await N.getAllScheduledNotificationsAsync();
+
+    // Index existing by habitId
+    const byHabit: Record<string, typeof scheduled> = {};
+    for (const item of scheduled) {
+      const hId = (item as any)?.content?.data?.hId;
+      if (typeof hId === 'string') {
+        (byHabit[hId] ||= []).push(item);
+      }
     }
+
+    // For each habit in state, reconcile
+    for (const h of habits) {
+      const parsed = parseHHMM(h.reminderTime);
+
+      const existing = byHabit[h.id] || [];
+
+      if (!parsed) {
+        // Should have none -> cancel any existing
+        for (const item of existing) {
+          await N.cancelScheduledNotificationAsync(item.identifier);
+        }
+        continue;
+      }
+
+      // Keep exactly one that matches hour/minute; cancel extras/different times
+      let hasCorrect = false;
+      for (const item of existing) {
+        if (triggerMatchesTime((item as any).trigger, parsed.hour, parsed.minute)) {
+          if (!hasCorrect) {
+            hasCorrect = true; // keep the first match
+          } else {
+            await N.cancelScheduledNotificationAsync(item.identifier); // duplicates
+          }
+        } else {
+          await N.cancelScheduledNotificationAsync(item.identifier); // wrong time
+        }
+      }
+
+      if (!hasCorrect) {
+        // schedule fresh
+        await N.scheduleNotificationAsync({
+          content: {
+            title: 'Small Steps',
+            body: `Time for: ${h.name}`,
+            sound: 'default',
+            data: { hId: h.id, kind: 'habit' },
+          },
+          trigger: {
+            hour: parsed.hour,
+            minute: parsed.minute,
+            repeats: true,
+            ...(Platform.OS === 'android' ? { channelId: 'habits-default' } : {}),
+          } as import('expo-notifications').CalendarTriggerInput,
+        });
+      }
+    }
+  } catch {
+    // Ignore; best-effort
   }
 }

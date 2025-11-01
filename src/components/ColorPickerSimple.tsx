@@ -1,6 +1,6 @@
 // src/components/ColorPickerSimple.tsx
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export type ColorPickerSimpleProps = {
   value: string;

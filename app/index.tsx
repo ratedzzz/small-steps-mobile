@@ -1,20 +1,21 @@
 // app/index.tsx
-
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 
 // Screens
-import HomeScreen from '../src/screens/HomeScreen';
+import BadgesScreen from '../src/screens/BadgesScreen';
 import CalendarScreen from '../src/screens/CalendarScreen';
 import JournalScreen from '../src/screens/JournalScreen';
-import BadgesScreen from '../src/screens/BadgesScreen';
 import SettingsScreen from '../src/screens/SettingsScreen';
+import HomeScreen from './HomeScreen';
 
 // Bottom navigation bar + its types
 import NavigationBar, { TabKey } from '../src/components/NavigationBar';
 
-export default function IndexRoute() {
+export default function Index() {
   const [currentTab, setCurrentTab] = useState<TabKey>('home');
+  const scheme = useColorScheme();
+  const bgColor = scheme === 'dark' ? '#1e293b' : '#fff';
 
   const ActiveScreen = useMemo(() => {
     switch (currentTab) {
@@ -34,25 +35,14 @@ export default function IndexRoute() {
   }, [currentTab]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {ActiveScreen}
-      </View>
-
-      <NavigationBar
-        current={currentTab}
-        onChange={(nextTab: TabKey) => setCurrentTab(nextTab)}
-      />
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <View style={styles.content}>{ActiveScreen}</View>
+      <NavigationBar current={currentTab} onChange={(next: TabKey) => setCurrentTab(next)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  content: { flex: 1 },
 });

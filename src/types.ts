@@ -39,3 +39,19 @@ export type Badge = {
   unlockedAt?: string;
   icon?: string; // emoji / asset ref
 };
+
+// ------------------------------------------
+// Optional helpers for time validation
+// ------------------------------------------
+
+export function isHHMM(v: string): boolean {
+  return /^([0-1]?\d|2[0-3]):([0-5]\d)$/.test(v.trim());
+}
+
+export function normalizeReminderTime(v?: string | null): string | null {
+  if (!v) return null;
+  const m = /^([0-1]?\d|2[0-3]):([0-5]\d)$/.exec(v.trim());
+  if (!m) return null;
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+

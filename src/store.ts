@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { evalBadges } from './badges';
 import { Badge, Goal, Habit, JournalEntry } from './types';
+import { normalizeReminderTime } from './types'; // add this near the top of store.ts
+
 
 import {
   deleteGoal,
@@ -38,6 +40,14 @@ export type State = {
   removeHabit: (id: string) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
 
+  // NEW: update APIs for editing
+  updateHabit: (id: string, patch: Partial<Habit>) => Promise<void>;
+  updateGoal: (id: string, patch: Partial<Goal>) => Promise<void>;
+
+  // NEW: selectors for edit screens
+  getHabitById: (id: string) => Habit | undefined;
+  getGoalById: (id: string) => Goal | undefined;
+
   upsertEntry: (e: JournalEntry) => void;
 
   resetAllInMemory: () => void;
@@ -68,16 +78,14 @@ export const useApp = create<State>((set, get) => ({
     });
   },
 
- 
   loadFromDB: async () => {
-    
     const [habitsRows, goalsRows, journalRowsRaw] = await Promise.all([
       getAllHabits(),
       getAllGoals(),
       getAllJournalEntries(),
     ]);
 
-    // 3. Convert raw journal rows from DB into in-memory shape
+    // Convert raw journal rows from DB into in-memory shape
     const journalRows: JournalEntry[] = journalRowsRaw.map((row: any) => ({
       id: row.id,
       date: row.date,
@@ -89,10 +97,10 @@ export const useApp = create<State>((set, get) => ({
           : undefined,
     }));
 
-    // 4. Recompute badges with fresh data
+    // Recompute badges with fresh data
     const newBadges = evalBadges(journalRows, habitsRows, goalsRows, []);
 
-    // 5. Update Zustand
+    // Update Zustand
     set({
       habits: habitsRows,
       goals: goalsRows,
@@ -100,7 +108,7 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
 
-    // 6. Rebuild notifications after load
+    // Rebuild notifications after load (habits only)
     await rescheduleAll(
       habitsRows.map((h: Habit) => ({
         id: h.id,
@@ -200,9 +208,9 @@ export const useApp = create<State>((set, get) => ({
   /**
    * removeHabit()
    * - delete from SQLite
-   * - cancel its notification (TODO when you add cancelHabitReminder)
    * - update Zustand
    * - recompute badges
+   * - rebuild notifications
    */
   removeHabit: async (id: string) => {
     const { habits, goals, entries, badges } = get();
@@ -210,19 +218,25 @@ export const useApp = create<State>((set, get) => ({
     // 1. delete from DB
     await deleteHabit(id);
 
-    // 2. cancel OS notification for this habit if/when implemented
-    // await cancelHabitReminder(id);
-
-    // 3. update local arrays
+    // 2. update local arrays
     const updatedHabits = habits.filter((h) => h.id !== id);
 
-    // 4. recompute badges
+    // 3. recompute badges
     const newBadges = evalBadges(entries, updatedHabits, goals, badges);
 
     set({
       habits: updatedHabits,
       badges: newBadges,
     });
+
+    // 4. rebuild notifications after deletion
+    await rescheduleAll(
+      updatedHabits.map((h: Habit) => ({
+        id: h.id,
+        name: h.name,
+        reminderTime: h.reminderTime ?? undefined,
+      }))
+    );
   },
 
   /**
@@ -248,6 +262,106 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
   },
+
+  /**
+   * updateHabit()
+   * - merge a partial Habit patch
+   * - try to persist via insertHabit (assumed UPSERT/REPLACE)
+   * - recompute badges
+   * - rebuild notifications (prevents duplicate schedules, keeps it simple)
+   */
+  updateHabit: async (id: string, patch: Partial<Habit>) => {
+    const { habits, goals, entries, badges } = get();
+    const idx = habits.findIndex(h => h.id === id);
+    if (idx < 0) return;
+
+    const prev = habits[idx];
+    const next: Habit = {
+  ...prev,
+  ...patch,
+  // normalize using helper
+  reminderTime:
+    patch.reminderTime === undefined
+      ? (prev.reminderTime ?? null)
+      : normalizeReminderTime(patch.reminderTime),
+};
+
+    // Try to persist using existing insertHabit (assumed to UPSERT).
+    try {
+      await insertHabit({
+        id: next.id,
+        name: next.name,
+        color: next.color,
+        reminderTime: next.reminderTime ?? null,
+      });
+    } catch (err) {
+      console.warn('updateHabit: insertHabit failed (is it not an UPSERT/REPLACE?) — keeping in-memory state only', err);
+    }
+
+    // Update local state
+    const updatedHabits = [...habits];
+    updatedHabits[idx] = next;
+
+    const newBadges = evalBadges(entries, updatedHabits, goals, badges);
+
+    set({
+      habits: updatedHabits,
+      badges: newBadges,
+    });
+
+    // Rebuild notifications for all habits
+    await rescheduleAll(
+      updatedHabits.map((h: Habit) => ({
+        id: h.id,
+        name: h.name,
+        reminderTime: h.reminderTime ?? undefined,
+      }))
+    );
+  },
+
+  /**
+   * updateGoal()
+   * - merge a partial Goal patch
+   * - try to persist via insertGoal (assumed UPSERT/REPLACE)
+   * - recompute badges
+   */
+  updateGoal: async (id: string, patch: Partial<Goal>) => {
+    const { habits, goals, entries, badges } = get();
+    const idx = goals.findIndex(g => g.id === id);
+    if (idx < 0) return;
+
+    const prev = goals[idx];
+    const next: Goal = { ...prev, ...patch };
+
+    // Try to persist using existing insertGoal (assumed to UPSERT).
+    try {
+      await insertGoal({
+        id: next.id,
+        title: next.title,
+        color: next.color,
+        dueDate: next.dueDate,
+      });
+    } catch (err) {
+      console.warn('updateGoal: insertGoal failed (is it not an UPSERT/REPLACE?) — keeping in-memory state only', err);
+    }
+
+    // Update local state
+    const updatedGoals = [...goals];
+    updatedGoals[idx] = next;
+
+    const newBadges = evalBadges(entries, habits, updatedGoals, badges);
+
+    set({
+      goals: updatedGoals,
+      badges: newBadges,
+    });
+
+    // NOTE: no goal notifications implemented here (matches your current setup)
+  },
+
+  // ---- Selectors for edit screens ----
+  getHabitById: (id: string) => get().habits.find(h => h.id === id),
+  getGoalById:  (id: string) => get().goals.find(g => g.id === id),
 
   /**
    * upsertEntry()
