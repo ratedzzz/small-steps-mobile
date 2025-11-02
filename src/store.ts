@@ -3,7 +3,6 @@ import { evalBadges } from './badges';
 import { Badge, Goal, Habit, JournalEntry } from './types';
 import { normalizeReminderTime } from './types'; // add this near the top of store.ts
 
-
 import {
   deleteGoal,
   deleteHabit,
@@ -20,8 +19,14 @@ import {
   scheduleHabitReminder,
 } from './utils/notifications';
 
-// simple id generator for habits/goals etc.
-export const newId = () => Math.random().toString(36).slice(2, 10);
+// robust id generator for habits/goals
+function generateUniqueId(existing: string[]): string {
+  let id;
+  do {
+    id = Math.random().toString(36).slice(2, 10);
+  } while (existing.includes(id));
+  return id;
+}
 
 export type State = {
   habits: Habit[];
@@ -31,12 +36,9 @@ export type State = {
   pro: boolean; // subscription stub for Settings
 
   setPro: (v: boolean) => void;
-
   loadFromDB: () => Promise<void>;
-
   addHabit: (h: Partial<Habit>) => Promise<void>;
   addGoal: (g: Partial<Goal>) => Promise<void>;
-
   removeHabit: (id: string) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
 
@@ -49,7 +51,6 @@ export type State = {
   getGoalById: (id: string) => Goal | undefined;
 
   upsertEntry: (e: JournalEntry) => void;
-
   resetAllInMemory: () => void;
 };
 
@@ -60,14 +61,8 @@ export const useApp = create<State>((set, get) => ({
   badges: [],
   pro: false,
 
-  // toggle / set Pro status (placeholder for paid tier)
   setPro: (v: boolean) => set({ pro: v }),
 
-  /**
-   * resetAllInMemory()
-   * This should be called after eraseAll() in Settings.
-   * It wipes in-memory state so the UI instantly reflects "no data".
-   */
   resetAllInMemory: () => {
     set({
       habits: [],
@@ -85,7 +80,6 @@ export const useApp = create<State>((set, get) => ({
       getAllJournalEntries(),
     ]);
 
-    // Convert raw journal rows from DB into in-memory shape
     const journalRows: JournalEntry[] = journalRowsRaw.map((row: any) => ({
       id: row.id,
       date: row.date,
@@ -97,10 +91,8 @@ export const useApp = create<State>((set, get) => ({
           : undefined,
     }));
 
-    // Recompute badges with fresh data
     const newBadges = evalBadges(journalRows, habitsRows, goalsRows, []);
 
-    // Update Zustand
     set({
       habits: habitsRows,
       goals: goalsRows,
@@ -108,36 +100,26 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
 
-    // Rebuild notifications after load (habits only)
     await rescheduleAll(
       habitsRows.map((h: Habit) => ({
         id: h.id,
         name: h.name,
-        // IMPORTANT: pass undefined, not null, because some notif types forbid null
         reminderTime: h.reminderTime ?? undefined,
       }))
     );
   },
 
-  /**
-   * addHabit()
-   * - create a new Habit object
-   * - write it to SQLite
-   * - update Zustand immediately so UI feels instant
-   * - schedule notification if reminderTime is set
-   */
   addHabit: async (h: Partial<Habit>) => {
-    const id = newId();
+    const { habits } = get();
+    const id = generateUniqueId(habits.map(x => x.id));
 
     const newHabit: Habit = {
       id,
       name: h.name ?? 'New habit',
       color: h.color ?? '#6fb3ff',
-      // normalize to null if missing so SQLite gets NULL
       reminderTime: h.reminderTime ?? null,
     };
 
-    // 1. Persist to DB
     await insertHabit({
       id: newHabit.id,
       name: newHabit.name,
@@ -145,11 +127,9 @@ export const useApp = create<State>((set, get) => ({
       reminderTime: newHabit.reminderTime ?? null,
     });
 
-    // 2. Update Zustand copy of habits
-    const { habits, entries, goals, badges } = get();
+    const { entries, goals, badges } = get();
     const updatedHabits = [...habits, newHabit];
 
-    // 3. Recompute badges because habits changed
     const newBadges = evalBadges(entries, updatedHabits, goals, badges);
 
     set({
@@ -157,7 +137,6 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
 
-    // 4. Schedule daily reminder if habit has reminderTime
     if (newHabit.reminderTime) {
       await scheduleHabitReminder({
         id: newHabit.id,
@@ -167,15 +146,9 @@ export const useApp = create<State>((set, get) => ({
     }
   },
 
-  /**
-   * addGoal()
-   * - create a new Goal object
-   * - write it to SQLite
-   * - update Zustand immediately
-   * - recompute badges
-   */
   addGoal: async (g: Partial<Goal>) => {
-    const id = newId();
+    const { goals } = get();
+    const id = generateUniqueId(goals.map(x => x.id));
 
     const newGoal: Goal = {
       id,
@@ -184,7 +157,6 @@ export const useApp = create<State>((set, get) => ({
       dueDate: g.dueDate,
     };
 
-    // 1. Persist to DB
     await insertGoal({
       id: newGoal.id,
       title: newGoal.title,
@@ -192,11 +164,9 @@ export const useApp = create<State>((set, get) => ({
       dueDate: newGoal.dueDate,
     });
 
-    // 2. Update Zustand copy of goals
-    const { habits, goals, entries, badges } = get();
+    const { habits, entries, badges } = get();
     const updatedGoals = [...goals, newGoal];
 
-    // 3. Recompute badges because goals changed
     const newBadges = evalBadges(entries, habits, updatedGoals, badges);
 
     set({
@@ -205,23 +175,12 @@ export const useApp = create<State>((set, get) => ({
     });
   },
 
-  /**
-   * removeHabit()
-   * - delete from SQLite
-   * - update Zustand
-   * - recompute badges
-   * - rebuild notifications
-   */
   removeHabit: async (id: string) => {
     const { habits, goals, entries, badges } = get();
 
-    // 1. delete from DB
     await deleteHabit(id);
-
-    // 2. update local arrays
     const updatedHabits = habits.filter((h) => h.id !== id);
 
-    // 3. recompute badges
     const newBadges = evalBadges(entries, updatedHabits, goals, badges);
 
     set({
@@ -229,7 +188,6 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
 
-    // 4. rebuild notifications after deletion
     await rescheduleAll(
       updatedHabits.map((h: Habit) => ({
         id: h.id,
@@ -239,22 +197,12 @@ export const useApp = create<State>((set, get) => ({
     );
   },
 
-  /**
-   * removeGoal()
-   * - delete from SQLite
-   * - update Zustand
-   * - recompute badges
-   */
   removeGoal: async (id: string) => {
     const { habits, goals, entries, badges } = get();
 
-    // 1. delete from DB
     await deleteGoal(id);
-
-    // 2. update local arrays
     const updatedGoals = goals.filter((g) => g.id !== id);
 
-    // 3. recompute badges
     const newBadges = evalBadges(entries, habits, updatedGoals, badges);
 
     set({
@@ -263,13 +211,6 @@ export const useApp = create<State>((set, get) => ({
     });
   },
 
-  /**
-   * updateHabit()
-   * - merge a partial Habit patch
-   * - try to persist via insertHabit (assumed UPSERT/REPLACE)
-   * - recompute badges
-   * - rebuild notifications (prevents duplicate schedules, keeps it simple)
-   */
   updateHabit: async (id: string, patch: Partial<Habit>) => {
     const { habits, goals, entries, badges } = get();
     const idx = habits.findIndex(h => h.id === id);
@@ -277,16 +218,14 @@ export const useApp = create<State>((set, get) => ({
 
     const prev = habits[idx];
     const next: Habit = {
-  ...prev,
-  ...patch,
-  // normalize using helper
-  reminderTime:
-    patch.reminderTime === undefined
-      ? (prev.reminderTime ?? null)
-      : normalizeReminderTime(patch.reminderTime),
-};
+      ...prev,
+      ...patch,
+      reminderTime:
+        patch.reminderTime === undefined
+          ? (prev.reminderTime ?? null)
+          : normalizeReminderTime(patch.reminderTime),
+    };
 
-    // Try to persist using existing insertHabit (assumed to UPSERT).
     try {
       await insertHabit({
         id: next.id,
@@ -298,7 +237,6 @@ export const useApp = create<State>((set, get) => ({
       console.warn('updateHabit: insertHabit failed (is it not an UPSERT/REPLACE?) — keeping in-memory state only', err);
     }
 
-    // Update local state
     const updatedHabits = [...habits];
     updatedHabits[idx] = next;
 
@@ -309,7 +247,6 @@ export const useApp = create<State>((set, get) => ({
       badges: newBadges,
     });
 
-    // Rebuild notifications for all habits
     await rescheduleAll(
       updatedHabits.map((h: Habit) => ({
         id: h.id,
@@ -319,12 +256,6 @@ export const useApp = create<State>((set, get) => ({
     );
   },
 
-  /**
-   * updateGoal()
-   * - merge a partial Goal patch
-   * - try to persist via insertGoal (assumed UPSERT/REPLACE)
-   * - recompute badges
-   */
   updateGoal: async (id: string, patch: Partial<Goal>) => {
     const { habits, goals, entries, badges } = get();
     const idx = goals.findIndex(g => g.id === id);
@@ -333,7 +264,6 @@ export const useApp = create<State>((set, get) => ({
     const prev = goals[idx];
     const next: Goal = { ...prev, ...patch };
 
-    // Try to persist using existing insertGoal (assumed to UPSERT).
     try {
       await insertGoal({
         id: next.id,
@@ -345,7 +275,6 @@ export const useApp = create<State>((set, get) => ({
       console.warn('updateGoal: insertGoal failed (is it not an UPSERT/REPLACE?) — keeping in-memory state only', err);
     }
 
-    // Update local state
     const updatedGoals = [...goals];
     updatedGoals[idx] = next;
 
@@ -355,24 +284,13 @@ export const useApp = create<State>((set, get) => ({
       goals: updatedGoals,
       badges: newBadges,
     });
-
-    // NOTE: no goal notifications implemented here (matches your current setup)
   },
 
-  // ---- Selectors for edit screens ----
   getHabitById: (id: string) => get().habits.find(h => h.id === id),
   getGoalById:  (id: string) => get().goals.find(g => g.id === id),
 
-  /**
-   * upsertEntry()
-   * - add or update a journal entry / daily log / check-in in memory
-   * - persist new row to SQLite
-   * - recalc badges
-   */
   upsertEntry: (e: JournalEntry) => {
     const { habits, goals, badges, entries } = get();
-
-    // We consider one row per (date, habitId).
     const i = entries.findIndex(
       (x) => x.date === e.date && x.habitId === e.habitId
     );
@@ -380,27 +298,21 @@ export const useApp = create<State>((set, get) => ({
     let newEntries = [...entries];
 
     if (i >= 0) {
-      // merge into existing entry
       newEntries[i] = { ...newEntries[i], ...e };
     } else {
-      // brand new entry
       newEntries = [...newEntries, e];
     }
 
-    // Recompute badges with updated entries
     const newBadges = evalBadges(newEntries, habits, goals, badges);
 
-    // Update Zustand immediately
     set({
       entries: newEntries,
       badges: newBadges,
     });
 
-    // Persist to SQLite in the background.
     insertJournalEntry({
       date: e.date,
       habitId: e.habitId,
-      // store "completed" as text = "completed", otherwise store user's text.
       text: e.completed ? 'completed' : e.text ?? undefined,
     }).catch((err) => {
       console.warn('Failed to insert journal entry', err);

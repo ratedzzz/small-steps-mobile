@@ -30,7 +30,17 @@ export async function insertHabit(habit: {
   try {
     const existing = await AsyncStorage.getItem(HABITS_KEY);
     const habits = existing ? JSON.parse(existing) : [];
-    habits.push(habit);
+    
+    // ✅ Check if habit already exists
+    const existingIndex = habits.findIndex((h: any) => h.id === habit.id);
+    if (existingIndex >= 0) {
+      // Update existing habit
+      habits[existingIndex] = habit;
+    } else {
+      // Add new habit
+      habits.push(habit);
+    }
+    
     await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(habits));
   } catch (err) {
     console.warn('[storage] insertHabit error:', err);
@@ -71,7 +81,17 @@ export async function insertGoal(goal: {
   try {
     const existing = await AsyncStorage.getItem(GOALS_KEY);
     const goals = existing ? JSON.parse(existing) : [];
-    goals.push(goal);
+    
+    // ✅ Check if goal already exists
+    const existingIndex = goals.findIndex((g: any) => g.id === goal.id);
+    if (existingIndex >= 0) {
+      // Update existing goal
+      goals[existingIndex] = goal;
+    } else {
+      // Add new goal
+      goals.push(goal);
+    }
+    
     await AsyncStorage.setItem(GOALS_KEY, JSON.stringify(goals));
   } catch (err) {
     console.warn('[storage] insertGoal error:', err);
