@@ -1,18 +1,19 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Button,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Button,
-  Alert,
   useColorScheme,
-  Platform,
-  KeyboardAvoidingView,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApp } from '../../../src/store';
 
 const COLOR_OPTIONS = [
@@ -44,21 +45,35 @@ const darkTheme = {
 };
 
 function isValidISODate(dateString: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateString.trim());
+  return /^\d{4}-\d{2}-\d{2}$/.test((dateString || '').trim());
 }
 
 export default function EditGoalScreen() {
   const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? darkTheme : lightTheme;
+  const theme = useMemo(() => (scheme === 'dark' ? darkTheme : lightTheme), [scheme]);
+
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { getGoalById, updateGoal } = useApp();
-  const goal = useMemo(() => (id ? getGoalById(String(id)) : undefined), [id, getGoalById]);
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
+
+  // Normalize `id` (Expo Router can deliver arrays)
+  const goalId = useMemo(() => (Array.isArray(id) ? id[0] : id) ?? '', [id]);
+
+  // Pull selectors/actions + hydration flag from the store
+  const getGoalById = useApp((s) => s.getGoalById);
+const updateGoal  = useApp((s) => s.updateGoal);
+const _hydrated   = useApp((s) => (s as any)._hydrated ?? true);
+
+
+  const goal = useMemo(
+    () => (goalId ? getGoalById(goalId) : undefined),
+    [goalId, getGoalById]
+  );
 
   const [title, setTitle] = useState<string>('');
   const [color, setColor] = useState<string>('#10B981');
   const [dueDate, setDueDate] = useState<string>(''); // blank or YYYY-MM-DD
 
+  // Seed form fields when goal is available
   useEffect(() => {
     if (goal) {
       setTitle(goal.title ?? '');
@@ -67,19 +82,37 @@ export default function EditGoalScreen() {
     }
   }, [goal]);
 
+  // If we haven't hydrated yet, show a tiny loader instead of "Goal not found"
+  if (!_hydrated) {
+    return (
+      <View style={[styles.center, { flex: 1, backgroundColor: theme.bg }]}>
+        <ActivityIndicator />
+        <Text style={{ marginTop: 8, color: theme.text, opacity: 0.7 }}>
+          Loading…
+        </Text>
+      </View>
+    );
+  }
+
   if (!goal) {
     return (
       <View style={[styles.center, { flex: 1, backgroundColor: theme.bg }]}>
         <Text style={{ color: theme.text, opacity: 0.7 }}>Goal not found.</Text>
         <View style={{ height: 12 }} />
-        <Button title="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />
+        <Button
+          title="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        />
       </View>
     );
   }
 
   async function onSave() {
-    if (!goal) return;
-
+    // Ensure `goal` is present before using it (fixes "possibly undefined" compile error)
+    if (!goal) {
+      Alert.alert('Error', 'Goal not found.');
+      return;
+    }
     if (!title.trim()) {
       Alert.alert('Title required', 'Goal title cannot be empty.');
       return;
@@ -90,7 +123,7 @@ export default function EditGoalScreen() {
     }
 
     await updateGoal(goal.id, {
-      title,
+      title: title.trim(),
       color,
       dueDate: dueDate.trim() || undefined,
     });
@@ -104,7 +137,10 @@ export default function EditGoalScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.bg }]}
         keyboardShouldPersistTaps="handled"
@@ -132,7 +168,7 @@ export default function EditGoalScreen() {
             const selected = c.toLowerCase() === (color ?? '').toLowerCase();
             return (
               <TouchableOpacity
-                key={c}
+                key={`goal-color:${c}`}
                 style={[
                   styles.colorSwatch,
                   {
@@ -183,7 +219,7 @@ export default function EditGoalScreen() {
         <Button
           title="Cancel"
           color={Platform.OS === 'ios' ? '#999' : undefined}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
         />
         <View style={{ height: 16 }} />
       </ScrollView>

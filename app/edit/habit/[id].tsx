@@ -1,18 +1,19 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Button,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Button,
-  Alert,
   useColorScheme,
-  Platform,
-  KeyboardAvoidingView,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApp } from '../../../src/store';
 import { cancelHabitReminder, scheduleHabitReminder } from '../../../src/utils/notifications';
 
@@ -46,18 +47,28 @@ const darkTheme = {
 
 // 24-hour HH:MM check/normalize
 function normalizeHHMM(s: string): string | null {
-  const m = /^([0-1]?\d|2[0-3]):([0-5]\d)$/.exec(s.trim());
+  const m = /^([0-1]?\d|2[0-3]):([0-5]\d)$/.exec((s || '').trim());
   if (!m) return null;
   return `${m[1].padStart(2, '0')}:${m[2]}`;
 }
 
 export default function EditHabitScreen() {
   const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? darkTheme : lightTheme;
+  const theme = useMemo(() => (scheme === 'dark' ? darkTheme : lightTheme), [scheme]);
+
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { getHabitById, updateHabit } = useApp();
-  const habit = useMemo(() => (id ? getHabitById(String(id)) : undefined), [id, getHabitById]);
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
+  const habitId = useMemo(() => (Array.isArray(id) ? id[0] : id) ?? '', [id]);
+
+  // Pull selectors/actions + hydration flag from store
+  const getHabitById = useApp((s) => s.getHabitById);
+const updateHabit  = useApp((s) => s.updateHabit);
+const _hydrated    = useApp((s) => (s as any)._hydrated ?? true);
+
+  const habit = useMemo(
+    () => (habitId ? getHabitById(habitId) : undefined),
+    [habitId, getHabitById]
+  );
 
   const [name, setName] = useState<string>('');
   const [color, setColor] = useState<string>('#6366F1');
@@ -71,41 +82,65 @@ export default function EditHabitScreen() {
     }
   }, [habit]);
 
+  // Show loader until hydration completes (avoids false "not found")
+  if (!_hydrated) {
+    return (
+      <View style={[styles.center, { flex: 1, backgroundColor: theme.bg }]}>
+        <ActivityIndicator />
+        <Text style={{ marginTop: 8, color: theme.text, opacity: 0.7 }}>Loading…</Text>
+      </View>
+    );
+  }
+
   if (!habit) {
     return (
       <View style={[styles.center, { flex: 1, backgroundColor: theme.bg }]}>
         <Text style={{ color: theme.text, opacity: 0.7 }}>Habit not found.</Text>
         <View style={{ height: 12 }} />
-        <Button title="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />
+        <Button
+          title="Back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        />
       </View>
     );
   }
 
   async function onSave() {
-    if (!habit) return;
+    // Guard: ensure habit is present before proceeding
+    if (!habit) {
+      Alert.alert('Habit not found', 'Unable to save: habit data is missing.');
+      return;
+    }
 
-    const trimmed = reminderTime.trim();
+    // Capture habit properties into locals before any await to keep TS happy
+    const habitId = habit.id;
+    const habitName = habit.name;
+    const oldTime = habit.reminderTime ?? null;
+
+    const trimmed = (reminderTime || '').trim();
     const nextReminder: string | null = trimmed === '' ? null : normalizeHHMM(trimmed);
 
     if (trimmed !== '' && nextReminder == null) {
-      Alert.alert('Invalid time', 'Please enter a time in HH:MM 24-hour format (e.g., 07:30 or 19:45).');
+      Alert.alert(
+        'Invalid time',
+        'Please enter a time in HH:MM 24-hour format (e.g., 07:30 or 19:45).'
+      );
       return;
     }
 
     // Update notification if changed
-    const oldTime = habit.reminderTime ?? null;
     if (nextReminder !== oldTime) {
-      await cancelHabitReminder(habit.id);
+      await cancelHabitReminder(habitId);
       if (nextReminder) {
         await scheduleHabitReminder({
-          id: habit.id,
-          name: name,
+          id: habitId,
+          name: name.trim() || habitName,
           reminderTime: nextReminder,
         });
       }
     }
 
-    await updateHabit(habit.id, { name, color, reminderTime: nextReminder });
+    await updateHabit(habitId, { name: name.trim() || habitName, color, reminderTime: nextReminder });
 
     if (Platform.OS === 'android') {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -117,89 +152,92 @@ export default function EditHabitScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.bg }]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={[styles.title, { color: theme.text }]}>Edit Habit</Text>
+      <ScrollView
+        contentContainerStyle={[styles.container, { backgroundColor: theme.bg }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={[styles.title, { color: theme.text }]}>Edit Habit</Text>
 
-      {/* Name */}
-      <Text style={[styles.label, { color: theme.text }]}>Habit Name</Text>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g., Drink water, Exercise…"
-        placeholderTextColor={theme.placeholder}
-        style={[
-          styles.input,
-          { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-        ]}
-        returnKeyType="done"
-      />
-
-      {/* Color (swatch grid) */}
-      <Text style={[styles.label, { color: theme.text }]}>Color</Text>
-      <View style={styles.colorGrid}>
-        {COLOR_OPTIONS.map((c) => {
-          const selected = c.toLowerCase() === (color ?? '').toLowerCase();
-          return (
-            <TouchableOpacity
-              key={c}
-              style={[
-                styles.colorSwatch,
-                {
-                  backgroundColor: c,
-                  borderColor: selected ? '#333' : '#fff',
-                  borderWidth: selected ? 3 : 2,
-                },
-              ]}
-              onPress={() => setColor(c)}
-              accessible
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            />
-          );
-        })}
-      </View>
-      <View style={styles.previewRow}>
-        <Text style={[styles.previewText, { color: theme.text }]}>Selected:</Text>
-        <View
+        {/* Name */}
+        <Text style={[styles.label, { color: theme.text }]}>Habit Name</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g., Drink water, Exercise…"
+          placeholderTextColor={theme.placeholder}
           style={[
-            styles.previewSwatch,
-            { backgroundColor: color, borderColor: theme.border },
+            styles.input,
+            { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
           ]}
+          returnKeyType="done"
         />
-      </View>
 
-      {/* Reminder time */}
-      <Text style={[styles.label, { color: theme.text }]}>Reminder Time (Optional)</Text>
-      <TextInput
-        value={reminderTime}
-        onChangeText={setReminderTime}
-        placeholder="HH:MM (e.g., 09:00)"
-        placeholderTextColor={theme.placeholder}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={[
-          styles.input,
-          { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
-        ]}
-        keyboardType="numeric"
-        maxLength={5}
-        returnKeyType="done"
-      />
+        {/* Color (swatch grid) */}
+        <Text style={[styles.label, { color: theme.text }]}>Color</Text>
+        <View style={styles.colorGrid}>
+          {COLOR_OPTIONS.map((c) => {
+            const selected = c.toLowerCase() === (color ?? '').toLowerCase();
+            return (
+              <TouchableOpacity
+                key={`habit-color:${c}`}
+                style={[
+                  styles.colorSwatch,
+                  {
+                    backgroundColor: c,
+                    borderColor: selected ? '#333' : '#fff',
+                    borderWidth: selected ? 3 : 2,
+                  },
+                ]}
+                onPress={() => setColor(c)}
+                accessible
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              />
+            );
+          })}
+        </View>
+        <View style={styles.previewRow}>
+          <Text style={[styles.previewText, { color: theme.text }]}>Selected:</Text>
+          <View
+            style={[
+              styles.previewSwatch,
+              { backgroundColor: color, borderColor: theme.border },
+            ]}
+          />
+        </View>
 
-      <View style={{ height: 8 }} />
-      <Button title="Save" onPress={onSave} />
-      <View style={{ height: 16 }} />
-      <Button
-        title="Cancel"
-        color={Platform.OS === 'ios' ? '#999' : undefined}
-        onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
-      />
-      <View style={{ height: 16 }} />
-    </ScrollView>
+        {/* Reminder time */}
+        <Text style={[styles.label, { color: theme.text }]}>Reminder Time (Optional)</Text>
+        <TextInput
+          value={reminderTime}
+          onChangeText={setReminderTime}
+          placeholder="HH:MM (e.g., 09:00)"
+          placeholderTextColor={theme.placeholder}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={[
+            styles.input,
+            { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+          ]}
+          keyboardType="numeric"
+          maxLength={5}
+          returnKeyType="done"
+        />
+
+        <View style={{ height: 8 }} />
+        <Button title="Save" onPress={onSave} />
+        <View style={{ height: 16 }} />
+        <Button
+          title="Cancel"
+          color={Platform.OS === 'ios' ? '#999' : undefined}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        />
+        <View style={{ height: 16 }} />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
