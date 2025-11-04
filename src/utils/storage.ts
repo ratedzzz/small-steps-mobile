@@ -1,10 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Storage keys
+/* ---------------------------------------------
+   Config
+---------------------------------------------- */
+
+// If true: free-form journal (no habitId) is ONE entry per day (upsert by date).
+// If false: allow multiple free-form notes per day (always append).
+const SINGLE_JOURNAL_PER_DAY = true;
+
+/* ---------------------------------------------
+   Storage keys
+---------------------------------------------- */
 const HABITS_KEY = 'habits';
 const GOALS_KEY = 'goals';
 const JOURNAL_KEY = 'journal';
 
+/* ---------------------------------------------
+   Init / DB shim
+---------------------------------------------- */
 /** No-op for AsyncStorage - schema is implicit in JSON structure */
 export function initSchema() {
   console.log('[storage] Using AsyncStorage (no schema needed)');
@@ -15,15 +28,15 @@ export function getDB() {
   return null;
 }
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
+/* ---------------------------------------------
+   Helpers
+---------------------------------------------- */
 
-function safeParseArray(raw: string | null): any[] {
+function safeParseArray<T = any>(raw: string | null): T[] {
   if (!raw) return [];
   try {
     const v = JSON.parse(raw);
-    return Array.isArray(v) ? v : [];
+    return Array.isArray(v) ? (v as T[]) : [];
   } catch {
     return [];
   }
@@ -34,10 +47,11 @@ function uniqById<T extends { id?: string }>(arr: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
   for (const it of arr) {
-    if (!it || !it.id) continue;
-    if (seen.has(it.id)) continue;
-    seen.add(it.id);
-    out.push(it);
+    const id = it && typeof it.id !== 'undefined' ? String(it.id) : '';
+    if (!id) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ ...it, id } as T);
   }
   return out;
 }
@@ -45,6 +59,11 @@ function uniqById<T extends { id?: string }>(arr: T[]): T[] {
 // Write an array safely
 async function writeArray(key: string, value: any[]) {
   await AsyncStorage.setItem(key, JSON.stringify(value ?? []));
+}
+
+// String id generator (keeps id type consistent across app)
+function genId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /* =============================
@@ -58,16 +77,15 @@ export async function insertHabit(habit: {
   reminderTime?: string | null;
 }): Promise<void> {
   try {
-    const existing = safeParseArray(await AsyncStorage.getItem(HABITS_KEY));
-    const idx = existing.findIndex((h: any) => h?.id === habit.id);
+    const existing = safeParseArray<any>(await AsyncStorage.getItem(HABITS_KEY));
+    const idx = existing.findIndex((h) => String(h?.id) === String(habit.id));
 
     if (idx >= 0) {
-      existing[idx] = { ...existing[idx], ...habit };
+      existing[idx] = { ...existing[idx], ...habit, id: String(habit.id) };
     } else {
-      existing.push(habit);
+      existing.push({ ...habit, id: String(habit.id) });
     }
 
-    // Deduplicate by id (defensive)
     const deduped = uniqById(existing);
     await writeArray(HABITS_KEY, deduped);
   } catch (err) {
@@ -77,7 +95,7 @@ export async function insertHabit(habit: {
 
 export async function getAllHabits(): Promise<any[]> {
   try {
-    const arr = safeParseArray(await AsyncStorage.getItem(HABITS_KEY));
+    const arr = safeParseArray<any>(await AsyncStorage.getItem(HABITS_KEY));
     return uniqById(arr);
   } catch (err) {
     console.warn('[storage] getAllHabits error:', err);
@@ -87,8 +105,8 @@ export async function getAllHabits(): Promise<any[]> {
 
 export async function deleteHabit(id: string): Promise<void> {
   try {
-    const existing = safeParseArray(await AsyncStorage.getItem(HABITS_KEY));
-    const filtered = existing.filter((h: any) => h?.id !== id);
+    const existing = safeParseArray<any>(await AsyncStorage.getItem(HABITS_KEY));
+    const filtered = existing.filter((h) => String(h?.id) !== String(id));
     await writeArray(HABITS_KEY, filtered);
   } catch (err) {
     console.warn('[storage] deleteHabit error:', err);
@@ -106,13 +124,13 @@ export async function insertGoal(goal: {
   dueDate?: string;
 }): Promise<void> {
   try {
-    const existing = safeParseArray(await AsyncStorage.getItem(GOALS_KEY));
-    const idx = existing.findIndex((g: any) => g?.id === goal.id);
+    const existing = safeParseArray<any>(await AsyncStorage.getItem(GOALS_KEY));
+    const idx = existing.findIndex((g) => String(g?.id) === String(goal.id));
 
     if (idx >= 0) {
-      existing[idx] = { ...existing[idx], ...goal };
+      existing[idx] = { ...existing[idx], ...goal, id: String(goal.id) };
     } else {
-      existing.push(goal);
+      existing.push({ ...goal, id: String(goal.id) });
     }
 
     const deduped = uniqById(existing);
@@ -124,7 +142,7 @@ export async function insertGoal(goal: {
 
 export async function getAllGoals(): Promise<any[]> {
   try {
-    const arr = safeParseArray(await AsyncStorage.getItem(GOALS_KEY));
+    const arr = safeParseArray<any>(await AsyncStorage.getItem(GOALS_KEY));
     return uniqById(arr);
   } catch (err) {
     console.warn('[storage] getAllGoals error:', err);
@@ -134,8 +152,8 @@ export async function getAllGoals(): Promise<any[]> {
 
 export async function deleteGoal(id: string): Promise<void> {
   try {
-    const existing = safeParseArray(await AsyncStorage.getItem(GOALS_KEY));
-    const filtered = existing.filter((g: any) => g?.id !== id);
+    const existing = safeParseArray<any>(await AsyncStorage.getItem(GOALS_KEY));
+    const filtered = existing.filter((g) => String(g?.id) !== String(id));
     await writeArray(GOALS_KEY, filtered);
   } catch (err) {
     console.warn('[storage] deleteGoal error:', err);
@@ -147,71 +165,154 @@ export async function deleteGoal(id: string): Promise<void> {
 =============================*/
 
 /**
- * Upsert by (date, habitId) when habitId is provided.
- * - This keeps "one row per habit per day", which avoids duplicate-completion counting.
- * - For free-form notes without habitId, we append (multiple notes per day are allowed).
+ * Journal entry shape we persist.
+ * - id is a string everywhere for consistency
+ * - For (date, habitId) rows => upsert by composite key
+ * - For free-form notes (no habitId):
+ *   - If SINGLE_JOURNAL_PER_DAY = true, upsert by (date)
+ *   - Else, append new entry
+ */
+export type JournalEntry = {
+  id: string;
+  date: string;          // YYYY-MM-DD
+  habitId?: string;      // undefined for free-form journal
+  text?: string;
+  createdAtISO?: string;
+  updatedAtISO?: string;
+};
+
+/**
+ * Returns the saved entry (always a full object with string id).
  */
 export async function insertJournalEntry(entry: {
+  id?: string;
   date: string;
   habitId?: string;
   text?: string;
-}): Promise<void> {
+}): Promise<JournalEntry> {
   try {
-    const journal = safeParseArray(await AsyncStorage.getItem(JOURNAL_KEY));
+    const journal = safeParseArray<JournalEntry>(await AsyncStorage.getItem(JOURNAL_KEY));
+
+    const now = new Date().toISOString();
+    let saved: JournalEntry | null = null;
 
     if (entry.habitId) {
       // UPSERT by composite key (date + habitId)
       const idx = journal.findIndex(
-        (e: any) => e?.date === entry.date && e?.habitId === entry.habitId
+        (e) => e?.date === entry.date && e?.habitId === entry.habitId
       );
       if (idx >= 0) {
-        journal[idx] = { ...journal[idx], ...entry };
+        const updated: JournalEntry = {
+          ...journal[idx],
+          ...entry,
+          id: String(journal[idx].id || entry.id || genId()),
+          updatedAtISO: now,
+          createdAtISO: journal[idx].createdAtISO || now,
+        };
+        journal[idx] = updated;
+        saved = updated;
       } else {
-        // id: keep numeric auto-increment for consistency
-        const maxId =
-          journal.length > 0 ? Math.max(...journal.map((e: any) => e?.id || 0)) : 0;
-        journal.push({ ...entry, id: maxId + 1 });
+        const created: JournalEntry = {
+          id: String(entry.id || genId()),
+          date: entry.date,
+          habitId: entry.habitId,
+          text: entry.text ?? '',
+          createdAtISO: now,
+          updatedAtISO: now,
+        };
+        journal.push(created);
+        saved = created;
       }
     } else {
-      // No habitId => allow multiple notes per date
-      const maxId =
-        journal.length > 0 ? Math.max(...journal.map((e: any) => e?.id || 0)) : 0;
-      journal.push({ ...entry, id: maxId + 1 });
+      // Free-form journal
+      if (SINGLE_JOURNAL_PER_DAY) {
+        // Upsert by (date)
+        const idx = journal.findIndex((e) => e?.date === entry.date && !e?.habitId);
+        if (idx >= 0) {
+          const updated: JournalEntry = {
+            ...journal[idx],
+            ...entry,
+            id: String(journal[idx].id || entry.id || genId()),
+            updatedAtISO: now,
+            createdAtISO: journal[idx].createdAtISO || now,
+          };
+          journal[idx] = updated;
+          saved = updated;
+        } else {
+          const created: JournalEntry = {
+            id: String(entry.id || genId()),
+            date: entry.date,
+            text: entry.text ?? '',
+            createdAtISO: now,
+            updatedAtISO: now,
+          };
+          journal.push(created);
+          saved = created;
+        }
+      } else {
+        // Allow multiple notes per day → always append
+        const created: JournalEntry = {
+          id: String(entry.id || genId()),
+          date: entry.date,
+          text: entry.text ?? '',
+          createdAtISO: now,
+          updatedAtISO: now,
+        };
+        journal.push(created);
+        saved = created;
+      }
     }
 
     await writeArray(JOURNAL_KEY, journal);
+    return saved!;
   } catch (err) {
     console.warn('[storage] insertJournalEntry error:', err);
+    // Return a best-effort entry so UI logic doesn’t break
+    return {
+      id: String(entry.id || genId()),
+      date: entry.date,
+      habitId: entry.habitId,
+      text: entry.text ?? '',
+      createdAtISO: new Date().toISOString(),
+      updatedAtISO: new Date().toISOString(),
+    };
   }
 }
 
-export async function getAllJournalEntries(): Promise<any[]> {
+export async function getAllJournalEntries(): Promise<JournalEntry[]> {
   try {
-    const entries = safeParseArray(await AsyncStorage.getItem(JOURNAL_KEY));
+    const entries = safeParseArray<JournalEntry>(await AsyncStorage.getItem(JOURNAL_KEY));
 
-    // If there are accidental duplicates for (date, habitId), keep the last one
-    const byKey = new Map<string, any>();
-    for (const e of entries) {
+    // Normalize id to string
+    const normalized = entries.map((e) => ({ ...e, id: String(e?.id || genId()) }));
+
+    // If there are accidental duplicates for (date, habitId), keep the LAST one (last write wins)
+    const byKey = new Map<string, JournalEntry>();
+    for (const e of normalized) {
       if (!e) continue;
       if (e.habitId) {
         const k = `${e.date}__${e.habitId}`;
-        byKey.set(k, e); // last write wins
-      } else {
-        // keep non-habit notes as-is by pushing with a unique key
-        const k = `note__${e.id ?? Math.random()}`;
         byKey.set(k, e);
+      } else if (SINGLE_JOURNAL_PER_DAY) {
+        const k = `daily__${e.date}`;
+        byKey.set(k, e);
+      } else {
+        // multiple notes per day: keep all - use unique key to preserve each
+        byKey.set(`note__${e.id}`, e);
       }
     }
-    const normalized = Array.from(byKey.values());
+    const out = Array.from(byKey.values());
 
-    // Sort by date DESC (most recent first), then by id DESC if dates equal
-    normalized.sort((a: any, b: any) => {
+    // Sort by date DESC then updatedAtISO DESC then createdAtISO DESC
+    out.sort((a, b) => {
       const d = String(b.date).localeCompare(String(a.date));
       if (d !== 0) return d;
-      return (b.id ?? 0) - (a.id ?? 0);
+      const u = String(b.updatedAtISO ?? '').localeCompare(String(a.updatedAtISO ?? ''));
+      if (u !== 0) return u;
+      return String(b.createdAtISO ?? '').localeCompare(String(a.createdAtISO ?? ''));
     });
 
-    return normalized;
+    return out;
   } catch (err) {
     console.warn('[storage] getAllJournalEntries error:', err);
     return [];

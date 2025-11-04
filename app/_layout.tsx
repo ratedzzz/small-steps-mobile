@@ -1,50 +1,54 @@
 // app/_layout.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { Platform, InteractionManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { useApp } from '../src/store';
 import { initSchema } from '../src/utils/storage';
 import { configureNotifications } from '../src/utils/notifications';
 
+try { SplashScreen.preventAutoHideAsync(); } catch {}
+
 export default function RootLayout() {
-  // grab the action from the store
   const loadFromDB = useApp((s) => s.loadFromDB);
+  const didInitRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (didInitRef.current) return;
+    didInitRef.current = true;
 
+    let mounted = true;
     (async () => {
+      await new Promise<void>((r) => InteractionManager.runAfterInteractions(() => r()));
+
+      try { await initSchema(); } 
+      catch (e) { console.warn('[AppInit] initSchema failed:', e); }
+      if (!mounted) return;
+
+      try { await loadFromDB(); } 
+      catch (e) { console.warn('[AppInit] loadFromDB failed:', e); }
+      if (!mounted) return;
+
       try {
-        // 1) Ensure DB tables exist (safe to call multiple times)
-        await initSchema();
-
-        if (cancelled) return;
-
-        // 2) Hydrate Zustand from SQLite (also reschedules habit reminders)
-        await loadFromDB();
-
-        if (cancelled) return;
-
-        // 3) Prepare notifications (permissions, Android channel, handler)
-        await configureNotifications();
-      } catch (err) {
-        console.warn('App init failed:', err);
+        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+          await configureNotifications();
+        }
+      } catch (e) {
+        console.warn('[AppInit] notifications failed:', e);
       }
+
+      try { await SplashScreen.hideAsync(); } catch {}
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { mounted = false; };
   }, [loadFromDB]);
 
   return (
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        {/* index route renders your tabbed UI (Home/Calendar/Journal/Badges/Settings) */}
         <Stack.Screen name="index" />
-
-        {/* edit routes for Expo Router navigation */}
         <Stack.Screen name="edit/habit/[id]" />
         <Stack.Screen name="edit/goal/[id]" />
       </Stack>
