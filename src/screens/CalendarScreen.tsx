@@ -1,7 +1,7 @@
-import React, { useState, useColorScheme } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
 
 export default function CalendarScreen() {

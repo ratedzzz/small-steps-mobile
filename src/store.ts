@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { evalBadges } from './badges';
-import { Badge, Goal, Habit, JournalEntry } from './types';
-import { normalizeReminderTime } from './types'; // add this near the top of store.ts
+import { Badge, Goal, Habit, JournalEntry, normalizeReminderTime } from './types';
 
 import {
   deleteGoal,
@@ -49,7 +48,7 @@ function uniqById<T extends { id: string }>(items: T[] | undefined | null): T[] 
   return out;
 }
 
-// Generate an id guaranteed not to collide with an existing set
+// Generate an id guaranteed to collide with an existing set
 function generateUniqueId(existing: string[]): string {
   let id = makeId();
   while (existing.includes(id)) {
@@ -138,7 +137,11 @@ export const useApp = create<State>((set, get) => ({
       text: row.text && row.text !== 'completed' ? row.text : undefined,
     }));
 
-    const newBadges = evalBadges(journalRows, safeHabits, safeGoals, []);
+    const newBadges = evalBadges(journalRows, {
+      habits: safeHabits,
+      goals: safeGoals,
+      badges: [],
+    });
 
     set({
       habits: safeHabits,
@@ -181,7 +184,11 @@ export const useApp = create<State>((set, get) => ({
     const { entries, goals, badges } = get();
     const updatedHabits = uniqById< Habit >([...(habits ?? []), newHabit]);
 
-    const newBadges = evalBadges(entries ?? [], updatedHabits, goals ?? [], badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: updatedHabits,
+      goals: goals ?? [],
+      badges: badges ?? [],
+    });
 
     set({
       habits: updatedHabits,
@@ -220,7 +227,11 @@ export const useApp = create<State>((set, get) => ({
     const { habits, entries, badges } = get();
     const updatedGoals = uniqById< Goal >([...(goals ?? []), newGoal]);
 
-    const newBadges = evalBadges(entries ?? [], habits ?? [], updatedGoals, badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: habits ?? [],
+      goals: updatedGoals,
+      badges: badges ?? [],
+    });
 
     set({
       goals: updatedGoals,
@@ -234,7 +245,11 @@ export const useApp = create<State>((set, get) => ({
     await deleteHabit(id);
     const updatedHabits = uniqById((habits ?? []).filter((h) => h.id !== id));
 
-    const newBadges = evalBadges(entries ?? [], updatedHabits, goals ?? [], badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: updatedHabits,
+      goals: goals ?? [],
+      badges: badges ?? [],
+    });
 
     set({
       habits: updatedHabits,
@@ -256,7 +271,11 @@ export const useApp = create<State>((set, get) => ({
     await deleteGoal(id);
     const updatedGoals = uniqById((goals ?? []).filter((g) => g.id !== id));
 
-    const newBadges = evalBadges(entries ?? [], habits ?? [], updatedGoals, badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: habits ?? [],
+      goals: updatedGoals,
+      badges: badges ?? [],
+    });
 
     set({
       goals: updatedGoals,
@@ -298,7 +317,11 @@ export const useApp = create<State>((set, get) => ({
       safeHabits.map((h, i) => (i === idx ? next : h))
     );
 
-    const newBadges = evalBadges(entries ?? [], updatedHabits, goals ?? [], badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: updatedHabits,
+      goals: goals ?? [],
+      badges: badges ?? [],
+    });
 
     set({
       habits: updatedHabits,
@@ -341,7 +364,11 @@ export const useApp = create<State>((set, get) => ({
       safeGoals.map((g, i) => (i === idx ? next : g))
     );
 
-    const newBadges = evalBadges(entries ?? [], habits ?? [], updatedGoals, badges ?? []);
+    const newBadges = evalBadges(entries ?? [], {
+      habits: habits ?? [],
+      goals: updatedGoals,
+      badges: badges ?? [],
+    });
 
     set({
       goals: updatedGoals,
@@ -368,7 +395,11 @@ export const useApp = create<State>((set, get) => ({
       newEntries = [...newEntries, e];
     }
 
-    const newBadges = evalBadges(newEntries, habits ?? [], goals ?? [], badges ?? []);
+    const newBadges = evalBadges(newEntries, {
+      habits: habits ?? [],
+      goals: goals ?? [],
+      badges: badges ?? [],
+    });
 
     set({
       entries: newEntries,
