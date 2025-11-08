@@ -28,14 +28,20 @@ export default function JournalScreen() {
   useEffect(() => {
     const todayEntry = entries.find(e => e.date === today && !e.habitId);
     if (todayEntry) {
-      setJournalText(todayEntry.text || '');
-      setEntryId(todayEntry.id);
+      if (todayEntry.text !== journalText) {
+        setJournalText(todayEntry.text || '');
+      }
+      if (todayEntry.id !== entryId) {
+        setEntryId(todayEntry.id);
+      }
     } else {
       // Reset text if no entry is found (e.g. date changes)
-      setJournalText('');
+      if (journalText !== '') {
+        setJournalText('');
+      }
       // The ID is already set by useState initializer, no need to set it again
     }
-  }, [entries, today]);
+  }, [entries, today, journalText, entryId]);
 
   const saveJournal = () => {
     if (journalText.trim()) {
