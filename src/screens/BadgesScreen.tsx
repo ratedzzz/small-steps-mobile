@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ScrollView,
   useColorScheme,
+  Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
@@ -84,6 +86,15 @@ export default function BadgesScreen() {
   const unlockedBadges = allBadges.filter(b => b.unlocked);
   const lockedBadges = allBadges.filter(b => !b.unlocked);
 
+  const showBadgeDetails = (badge: typeof allBadges[0]) => {
+    const status = badge.unlocked ? '✓ Unlocked' : '🔒 Locked';
+    Alert.alert(
+      `${badge.icon} ${badge.name}`,
+      `${status}\n\n${badge.description}`,
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -128,14 +139,15 @@ export default function BadgesScreen() {
             </Text>
             <View style={styles.badgeGrid}>
               {unlockedBadges.map(badge => (
-                <View
+                <Pressable
                   key={badge.id}
+                  onPress={() => showBadgeDetails(badge)}
                   style={[styles.badge, { backgroundColor: theme.primary }]}
                 >
                   <Text style={styles.badgeIcon}>{badge.icon}</Text>
                   <Text style={styles.badgeName}>{badge.name}</Text>
                   <Text style={styles.badgeDesc}>{badge.description}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </>
@@ -149,9 +161,10 @@ export default function BadgesScreen() {
             </Text>
             <View style={styles.badgeGrid}>
               {lockedBadges.map(badge => (
-                <View
+                <Pressable
                   key={badge.id}
-                  style={[styles.badge, styles.badgeLocked, { 
+                  onPress={() => showBadgeDetails(badge)}
+                  style={[styles.badge, styles.badgeLocked, {
                     backgroundColor: theme.cardBg,
                     borderColor: theme.border,
                   }]}
@@ -165,7 +178,7 @@ export default function BadgesScreen() {
                   <Text style={[styles.badgeDesc, { color: theme.textSecondary }]}>
                     {badge.description}
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </>

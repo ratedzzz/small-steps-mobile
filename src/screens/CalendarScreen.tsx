@@ -14,19 +14,39 @@ export default function CalendarScreen() {
 
   // Build marked dates object for the calendar
   const markedDates = {};
-  
+
   entries.forEach(entry => {
     if (entry.completed && entry.habitId) {
       const habit = habits.find(h => h.id === entry.habitId);
-      if (habit && !markedDates[entry.date]) {
-        markedDates[entry.date] = { dots: [] };
-      }
-      if (habit && markedDates[entry.date]) {
+      if (habit) {
+        if (!markedDates[entry.date]) {
+          markedDates[entry.date] = { dots: [] };
+        }
+        if (!markedDates[entry.date].dots) {
+          markedDates[entry.date].dots = [];
+        }
         markedDates[entry.date].dots.push({
-          key: habit.id,
+          key: `habit-${habit.id}`,
           color: habit.color,
         });
       }
+    }
+  });
+
+  // Add goals to calendar (as dots with square indicator)
+  goals.forEach(goal => {
+    if (goal.dueDate) {
+      if (!markedDates[goal.dueDate]) {
+        markedDates[goal.dueDate] = { dots: [] };
+      }
+      if (!markedDates[goal.dueDate].dots) {
+        markedDates[goal.dueDate].dots = [];
+      }
+      // Add goal as a dot - we'll style it differently in the legend
+      markedDates[goal.dueDate].dots.push({
+        key: `goal-${goal.id}`,
+        color: goal.color,
+      });
     }
   });
 
@@ -47,6 +67,11 @@ export default function CalendarScreen() {
   // Get entries for selected date
   const selectedEntries = selectedDate
     ? entries.filter(e => e.date === selectedDate && e.habitId && e.completed)
+    : [];
+
+  // Get goals for selected date
+  const selectedGoals = selectedDate
+    ? goals.filter(g => g.dueDate === selectedDate)
     : [];
 
   return (
@@ -99,7 +124,7 @@ export default function CalendarScreen() {
               })}
             </Text>
             
-            {selectedEntries.length > 0 ? (
+            {selectedEntries.length > 0 && (
               <>
                 <Text style={[styles.detailsSubtitle, { color: theme.textSecondary }]}>
                   Completed Habits:
@@ -118,9 +143,29 @@ export default function CalendarScreen() {
                   ) : null;
                 })}
               </>
-            ) : (
+            )}
+
+            {selectedGoals.length > 0 && (
+              <>
+                <Text style={[styles.detailsSubtitle, { color: theme.textSecondary, marginTop: 12 }]}>
+                  Goals Due:
+                </Text>
+                {selectedGoals.map(goal => (
+                  <View key={goal.id} style={styles.habitRow}>
+                    <View
+                      style={[styles.goalSquare, { backgroundColor: goal.color }]}
+                    />
+                    <Text style={[styles.habitName, { color: theme.text }]}>
+                      {goal.title}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {selectedEntries.length === 0 && selectedGoals.length === 0 && (
               <Text style={[styles.noData, { color: theme.textSecondary }]}>
-                No habits completed on this day
+                No habits completed or goals due on this day
               </Text>
             )}
           </View>
@@ -129,17 +174,42 @@ export default function CalendarScreen() {
         {/* Legend */}
         <View style={[styles.legendCard, { backgroundColor: theme.cardBg }]}>
           <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
-          {habits.map(habit => (
-            <View key={habit.id} style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: habit.color }]} />
-              <Text style={[styles.legendText, { color: theme.text }]}>
-                {habit.name}
+
+          {habits.length > 0 && (
+            <>
+              <Text style={[styles.legendSubtitle, { color: theme.textSecondary }]}>
+                Habits (Circles)
               </Text>
-            </View>
-          ))}
-          {habits.length === 0 && (
+              {habits.map(habit => (
+                <View key={habit.id} style={styles.legendRow}>
+                  <View style={[styles.legendDot, { backgroundColor: habit.color }]} />
+                  <Text style={[styles.legendText, { color: theme.text }]}>
+                    {habit.name}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {goals.length > 0 && (
+            <>
+              <Text style={[styles.legendSubtitle, { color: theme.textSecondary, marginTop: 12 }]}>
+                Goals (Squares)
+              </Text>
+              {goals.map(goal => (
+                <View key={goal.id} style={styles.legendRow}>
+                  <View style={[styles.legendSquare, { backgroundColor: goal.color }]} />
+                  <Text style={[styles.legendText, { color: theme.text }]}>
+                    {goal.title}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {habits.length === 0 && goals.length === 0 && (
             <Text style={[styles.noData, { color: theme.textSecondary }]}>
-              Add habits to see them here
+              Add habits and goals to see them here
             </Text>
           )}
         </View>
@@ -205,6 +275,11 @@ const baseStyles = {
     height: 12,
     borderRadius: 6,
   },
+  goalSquare: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+  },
   habitName: {
     fontSize: 16,
   },
@@ -227,6 +302,11 @@ const baseStyles = {
     fontWeight: 'bold',
     marginBottom: 12,
   },
+  legendSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -237,6 +317,11 @@ const baseStyles = {
     width: 16,
     height: 16,
     borderRadius: 8,
+  },
+  legendSquare: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
   },
   legendText: {
     fontSize: 16,

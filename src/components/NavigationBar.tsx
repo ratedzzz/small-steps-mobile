@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   currentScreen: string;
@@ -7,6 +8,8 @@ interface Props {
 }
 
 export default function NavigationBar({ currentScreen, onNavigate }: Props) {
+  const insets = useSafeAreaInsets();
+
   const tabs = [
     { id: 'home', icon: '🏠', label: 'Home' },
     { id: 'calendar', icon: '📅', label: 'Calendar' },
@@ -16,7 +19,7 @@ export default function NavigationBar({ currentScreen, onNavigate }: Props) {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {tabs.map(tab => (
         <Pressable
           key={tab.id}
@@ -49,7 +52,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    paddingBottom: 20,
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },

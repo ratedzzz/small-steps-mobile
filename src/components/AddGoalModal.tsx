@@ -95,7 +95,7 @@ export default function AddGoalModal({ visible, onClose, darkMode }: AddGoalModa
                 onPress={onClose}
                 style={[styles.button, styles.buttonSecondary]}
               >
-                <Text style={[styles.buttonText, { color: theme.text }]}>
+                <Text style={styles.buttonText}>
                   Cancel
                 </Text>
               </Pressable>
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonSecondary: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#64748B',
   },
   buttonText: {
     fontSize: 16,

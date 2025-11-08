@@ -31,10 +31,14 @@ export default function HomeScreen() {
     setDailyQuote(getMotivationalQuote());
   }, []);
 
+  // Filter out archived items
+  const activeHabits = habits.filter(h => !h.archived);
+  const activeGoals = goals.filter(g => !g.archived);
+
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
-  
-  // Calculate completion for today
+
+  // Calculate completion for today (only active habits)
   const todayEntries = entries.filter(e => e.date === today && e.habitId);
   const completedToday = todayEntries.filter(e => e.completed).length;
 
@@ -73,14 +77,14 @@ export default function HomeScreen() {
         </View>
 
         {/* Today's Progress */}
-        {habits.length > 0 && (
+        {activeHabits.length > 0 && (
           <View style={[styles.progressCard, { backgroundColor: theme.cardBg }]}>
             <Text style={[styles.progressTitle, { color: theme.text }]}>
               Today's Progress
             </Text>
             <View style={styles.progressCircle}>
               <Text style={[styles.progressNumber, { color: theme.primary }]}>
-                {completedToday}/{habits.length}
+                {completedToday}/{activeHabits.length}
               </Text>
               <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
                 completed
@@ -103,14 +107,14 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {habits.length === 0 ? (
+          {activeHabits.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 No habits yet. Start by adding your first small step!
               </Text>
             </View>
           ) : (
-            habits.map((habit) => (
+            activeHabits.map((habit) => (
               <HabitItem
                 key={habit.id}
                 habit={habit}
@@ -133,14 +137,14 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {goals.length === 0 ? (
+          {activeGoals.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 Set a goal to work towards!
               </Text>
             </View>
           ) : (
-            goals.map((goal) => (
+            activeGoals.map((goal) => (
               <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />
             ))
           )}

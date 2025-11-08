@@ -8,10 +8,13 @@ import {
   Pressable,
   Alert,
   useColorScheme,
+  Share,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
 import * as Notifications from 'expo-notifications';
+import * as FileSystem from 'expo-file-system';
 
 export default function SettingsScreen() {
   const systemTheme = useColorScheme();
@@ -25,6 +28,46 @@ export default function SettingsScreen() {
       Alert.alert('Success', 'Notifications enabled!');
     } else {
       Alert.alert('Permissions Required', 'Please enable notifications in your device settings.');
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      const data = {
+        habits,
+        goals,
+        entries,
+        badges,
+        exportDate: new Date().toISOString(),
+      };
+
+      const jsonString = JSON.stringify(data, null, 2);
+
+      if (Platform.OS === 'web') {
+        // For web, download as file
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `small-steps-backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        Alert.alert('Success', 'Data exported successfully!');
+      } else {
+        // For mobile, save to file system and share
+        const fileUri = FileSystem.documentDirectory + `small-steps-backup-${new Date().toISOString().split('T')[0]}.json`;
+        await FileSystem.writeAsStringAsync(fileUri, jsonString);
+
+        await Share.share({
+          url: fileUri,
+          message: 'Small Steps data backup',
+        });
+
+        Alert.alert('Success', 'Data exported successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export data. Please try again.');
+      console.error('Export error:', error);
     }
   };
 
@@ -59,7 +102,7 @@ export default function SettingsScreen() {
               Total Habits:
             </Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
-              {habits.length}
+              {habits.filter(h => !h.archived).length}
             </Text>
           </View>
           <View style={styles.statRow}>
@@ -67,7 +110,7 @@ export default function SettingsScreen() {
               Total Goals:
             </Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
-              {goals.length}
+              {goals.filter(g => !g.archived).length}
             </Text>
           </View>
           <View style={styles.statRow}>
@@ -86,6 +129,47 @@ export default function SettingsScreen() {
               {badges.filter(b => b.unlockedAt).length}
             </Text>
           </View>
+        </View>
+
+        {/* My Archives */}
+        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>My Archives</Text>
+
+          <Text style={[styles.archiveSubtitle, { color: theme.textSecondary }]}>
+            Habits ({habits.filter(h => h.archived).length})
+          </Text>
+          {habits.filter(h => h.archived).length === 0 ? (
+            <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
+              No archived habits
+            </Text>
+          ) : (
+            habits.filter(h => h.archived).map(habit => (
+              <View key={habit.id} style={styles.archiveItem}>
+                <View style={[styles.archiveDot, { backgroundColor: habit.color }]} />
+                <Text style={[styles.archiveText, { color: theme.text }]}>
+                  {habit.name}
+                </Text>
+              </View>
+            ))
+          )}
+
+          <Text style={[styles.archiveSubtitle, { color: theme.textSecondary, marginTop: 16 }]}>
+            Goals ({goals.filter(g => g.archived).length})
+          </Text>
+          {goals.filter(g => g.archived).length === 0 ? (
+            <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
+              No archived goals
+            </Text>
+          ) : (
+            goals.filter(g => g.archived).map(goal => (
+              <View key={goal.id} style={styles.archiveItem}>
+                <View style={[styles.archiveSquare, { backgroundColor: goal.color }]} />
+                <Text style={[styles.archiveText, { color: theme.text }]}>
+                  {goal.title}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
 
         {/* Subscription */}
@@ -136,10 +220,10 @@ export default function SettingsScreen() {
             Data Management
           </Text>
           <Pressable
-            onPress={() => Alert.alert('Export', 'Export feature coming soon!')}
+            onPress={exportData}
             style={[styles.button, styles.buttonSecondary]}
           >
-            <Text style={[styles.buttonText, { color: theme.text }]}>
+            <Text style={styles.buttonText}>
               Export Data
             </Text>
           </Pressable>
@@ -206,11 +290,17 @@ const baseStyles = {
     alignItems: 'center',
     marginBottom: 8,
   },
-  buttonSecondary: { backgroundColor: '#E5E7EB' },
+  buttonSecondary: { backgroundColor: '#64748B' },
   buttonDanger: { backgroundColor: '#EF4444' },
   buttonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
   helpText: { fontSize: 12, textAlign: 'center', marginTop: 8 },
   aboutText: { fontSize: 14, lineHeight: 22 },
+  archiveSubtitle: { fontSize: 14, fontWeight: '600', marginTop: 8, marginBottom: 8 },
+  emptyArchive: { fontSize: 14, fontStyle: 'italic', marginBottom: 8 },
+  archiveItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 10 },
+  archiveDot: { width: 12, height: 12, borderRadius: 6 },
+  archiveSquare: { width: 12, height: 12, borderRadius: 2 },
+  archiveText: { fontSize: 14 },
 };
 
 const lightStyles = StyleSheet.create({
