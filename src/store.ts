@@ -30,8 +30,8 @@ export const useApp = create<State>()(
       addHabit: (h) => set((s) => ({ habits: [...s.habits, { id: newId(), name: h.name ?? 'New habit', color: h.color ?? '#6fb3ff', reminderTime: h.reminderTime }] })),
       addGoal: (g) => set((s) => ({ goals: [...s.goals, { id: newId(), title: g.title ?? 'New goal', color: g.color ?? '#9ad67d', dueDate: g.dueDate }] })),
       upsertEntry: (e) => set((s) => {
-        // Find existing entry by ID first, then by date/habitId combo
-        const i = s.entries.findIndex(x => x.id === e.id || (x.date === e.date && x.habitId === e.habitId && !x.habitId && !e.habitId));
+        // Find existing entry by ID first, then by date/habitId combo for habits, or by date for journal entries
+        const i = s.entries.findIndex(x => x.id === e.id || (x.date === e.date && x.habitId === e.habitId));
         let entries = [...s.entries];
         if (i >= 0) entries[i] = { ...entries[i], ...e };
         else entries = [...entries, e];

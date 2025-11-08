@@ -12,13 +12,19 @@ export function evalBadges(entries: JournalEntry[], currentBadges: Badge[]): Bad
   let currentStreak = 0;
   let maxStreak = 0;
 
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
   for (let i = 0; i < sortedDates.length; i++) {
     if (i === 0) {
       currentStreak = 1;
     } else {
-      const prevDate = new Date(sortedDates[i - 1]);
-      const currDate = new Date(sortedDates[i]);
-      const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      const prevDate = new Date(sortedDates[i - 1] + 'T00:00:00Z');
+      const currDate = new Date(sortedDates[i] + 'T00:00:00Z');
+
+      const utcPrev = Date.UTC(prevDate.getUTCFullYear(), prevDate.getUTCMonth(), prevDate.getUTCDate());
+      const utcCurr = Date.UTC(currDate.getUTCFullYear(), currDate.getUTCMonth(), currDate.getUTCDate());
+
+      const diffDays = Math.round((utcCurr - utcPrev) / MS_PER_DAY);
 
       if (diffDays === 1) {
         currentStreak++;

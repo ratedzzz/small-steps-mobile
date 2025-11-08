@@ -21,7 +21,8 @@ export default function JournalScreen() {
   const today = new Date().toISOString().split('T')[0];
 
   const [journalText, setJournalText] = useState('');
-  const [entryId, setEntryId] = useState('');
+  // Initialize entryId with a new ID, it will be overwritten if an entry exists
+  const [entryId, setEntryId] = useState(newId);
 
   useEffect(() => {
     const todayEntry = entries.find(e => e.date === today && !e.habitId);
@@ -29,8 +30,9 @@ export default function JournalScreen() {
       setJournalText(todayEntry.text || '');
       setEntryId(todayEntry.id);
     } else {
+      // Reset text if no entry is found (e.g. date changes)
       setJournalText('');
-      setEntryId(newId());
+      // The ID is already set by useState initializer, no need to set it again
     }
   }, [entries, today]);
 
