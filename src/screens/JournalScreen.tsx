@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  ScrollView,
-  Pressable,
   useColorScheme,
-  Alert,
+  View,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp, newId } from '../store';
+import { newId, useApp } from '../store';
 
 export default function JournalScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  const theme = darkMode ? darkTheme : lightTheme;
   
   const { entries, upsertEntry } = useApp();
   const today = new Date().toISOString().split('T')[0];
@@ -111,7 +113,21 @@ export default function JournalScreen() {
   );
 }
 
-const baseStyles = {
+// Replace untyped baseStyles + StyleSheet.create with a typed styles object
+interface Styles {
+  container: ViewStyle;
+  scrollContent: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  card: ViewStyle;
+  promptTitle: TextStyle;
+  journalInput: TextStyle;
+  saveButton: ViewStyle;
+  saveButtonText: TextStyle;
+  promptText: TextStyle;
+}
+
+const styles = StyleSheet.create<Styles>({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
@@ -142,10 +158,9 @@ const baseStyles = {
   },
   saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
   promptText: { fontSize: 14, lineHeight: 24 },
-};
+});
 
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
+const lightTheme = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',
   text: '#0F172A',
@@ -154,10 +169,9 @@ const lightStyles = StyleSheet.create({
   border: '#E2E8F0',
   placeholder: '#94A3B8',
   primary: '#6366F1',
-});
+};
 
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
+const darkTheme = {
   bg: '#0F172A',
   cardBg: '#1E293B',
   text: '#F1F5F9',
@@ -166,6 +180,4 @@ const darkStyles = StyleSheet.create({
   border: '#334155',
   placeholder: '#64748B',
   primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);
+};

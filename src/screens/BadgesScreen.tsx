@@ -182,7 +182,26 @@ export default function BadgesScreen() {
   );
 }
 
-const baseStyles = {
+type Styles = {
+  container: ViewStyle;
+  scrollContent: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  statsCard: ViewStyle;
+  statItem: ViewStyle;
+  statNumber: TextStyle;
+  statLabel: TextStyle;
+  sectionTitle: TextStyle;
+  badgeGrid: ViewStyle;
+  badge: ViewStyle;
+  badgeLocked: ViewStyle;
+  badgeIcon: TextStyle;
+  badgeIconLocked: TextStyle;
+  badgeName: TextStyle;
+  badgeDesc: TextStyle;
+};
+
+const baseStyles: Styles = {
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   title: { fontSize: 32, fontWeight: '700', marginBottom: 4 },
@@ -229,18 +248,18 @@ const baseStyles = {
   },
   badgeIcon: { fontSize: 32, marginBottom: 8 },
   badgeIconLocked: { opacity: 0.3 },
-  badgeName: { 
-    fontSize: 12, 
-    fontWeight: '700', 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    marginBottom: 4 
+  badgeName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  badgeDesc: { 
-    fontSize: 9, 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    opacity: 0.8 
+  badgeDesc: {
+    fontSize: 9,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.8,
   },
 };
 
@@ -263,21 +282,4 @@ const darkTheme = {
   primary: '#818CF8',
 } as const;
 
-const styles = StyleSheet.create<{
-  container: ViewStyle;
-  scrollContent: ViewStyle;
-  title: TextStyle;
-  subtitle: TextStyle;
-  statsCard: ViewStyle;
-  statItem: ViewStyle;
-  statNumber: TextStyle;
-  statLabel: TextStyle;
-  sectionTitle: TextStyle;
-  badgeGrid: ViewStyle;
-  badge: ViewStyle;
-  badgeLocked: ViewStyle;
-  badgeIcon: TextStyle;
-  badgeIconLocked: TextStyle;
-  badgeName: TextStyle;
-  badgeDesc: TextStyle;
-}>(baseStyles);
+const styles = StyleSheet.create<Styles>(baseStyles);
