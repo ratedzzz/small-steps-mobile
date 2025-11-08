@@ -181,11 +181,11 @@ export default function BadgesScreen() {
 const baseStyles = {
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
+  title: { fontSize: 32, fontWeight: 'bold' as const, marginBottom: 4 },
   subtitle: { fontSize: 14, marginBottom: 20 },
   statsCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-around' as const,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -195,23 +195,23 @@ const baseStyles = {
     shadowRadius: 8,
     elevation: 3,
   },
-  statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 32, fontWeight: 'bold' },
+  statItem: { alignItems: 'center' as const },
+  statNumber: { fontSize: 32, fontWeight: 'bold' as const },
   statLabel: { fontSize: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold' as const, marginBottom: 12 },
   badgeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
     gap: 12,
     marginBottom: 24,
   },
   badge: {
-    width: '31%',
+    width: '31%' as const,
     aspectRatio: 1,
     borderRadius: 16,
     padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -221,22 +221,22 @@ const baseStyles = {
   badgeLocked: {
     opacity: 0.5,
     borderWidth: 2,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
   },
   badgeIcon: { fontSize: 32, marginBottom: 8 },
   badgeIconLocked: { opacity: 0.3 },
-  badgeName: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    marginBottom: 4 
+  badgeName: {
+    fontSize: 12,
+    fontWeight: 'bold' as const,
+    color: '#FFFFFF',
+    textAlign: 'center' as const,
+    marginBottom: 4
   },
-  badgeDesc: { 
-    fontSize: 9, 
-    color: '#FFFFFF', 
-    textAlign: 'center', 
-    opacity: 0.8 
+  badgeDesc: {
+    fontSize: 9,
+    color: '#FFFFFF',
+    textAlign: 'center' as const,
+    opacity: 0.8
   },
 };
 
