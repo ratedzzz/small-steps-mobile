@@ -6,10 +6,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   useColorScheme,
   View,
   ViewStyle,
-  TextStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { newId, useApp } from '../store';
