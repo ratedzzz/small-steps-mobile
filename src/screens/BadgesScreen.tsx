@@ -90,7 +90,7 @@ export default function BadgesScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: theme.text }]}>Achievements</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {unlockedBadges.length} of {allBadges.length} badges earned
+          {unlockedBadges.length} of {ALL_BADGE_DEFINITIONS.length} badges earned
         </Text>
 
         {/* Stats Card */}
