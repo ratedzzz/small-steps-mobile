@@ -1,13 +1,16 @@
 // src/screens/BadgesScreen.tsx
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  useColorScheme,
-  Pressable,
   Alert,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+  ViewStyle,
+  TextStyle, // added
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
@@ -61,10 +64,11 @@ const ALL_BADGE_DEFINITIONS = [
 export default function BadgesScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
-
+  // theme is now a plain object of color strings (not a StyleSheet)
+  const theme = darkMode ? darkTheme : lightTheme;
+  
   const { badges, entries, habits } = useApp();
-
+  
   // Calculate stats for display
   const completedHabits = entries.filter(e => e.completed && e.habitId).length;
   const uniqueDates = new Set(entries.filter(e => e.completed).map(e => e.date)).size;
@@ -86,8 +90,8 @@ export default function BadgesScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }] as StyleProp<ViewStyle>}>
+      <ScrollView contentContainerStyle={styles.scrollContent as StyleProp<ViewStyle>}>
         <Text style={[styles.title, { color: theme.text }]}>Achievements</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {unlockedBadges.length} of {ALL_BADGE_DEFINITIONS.length} badges earned
@@ -181,7 +185,7 @@ export default function BadgesScreen() {
 const baseStyles = {
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
+  title: { fontSize: 32, fontWeight: '700', marginBottom: 4 },
   subtitle: { fontSize: 14, marginBottom: 20 },
   statsCard: {
     flexDirection: 'row',
@@ -196,9 +200,9 @@ const baseStyles = {
     elevation: 3,
   },
   statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 32, fontWeight: 'bold' },
+  statNumber: { fontSize: 32, fontWeight: '700' },
   statLabel: { fontSize: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
   badgeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -227,7 +231,7 @@ const baseStyles = {
   badgeIconLocked: { opacity: 0.3 },
   badgeName: { 
     fontSize: 12, 
-    fontWeight: 'bold', 
+    fontWeight: '700', 
     color: '#FFFFFF', 
     textAlign: 'center', 
     marginBottom: 4 
@@ -240,24 +244,40 @@ const baseStyles = {
   },
 };
 
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
+// Theme color objects (plain JS) — only strings, so using them in inline styles is type-safe
+const lightTheme = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',
   text: '#0F172A',
   textSecondary: '#64748B',
   border: '#E2E8F0',
   primary: '#6366F1',
-});
+} as const;
 
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
+const darkTheme = {
   bg: '#0F172A',
   cardBg: '#1E293B',
   text: '#F1F5F9',
   textSecondary: '#94A3B8',
   border: '#334155',
   primary: '#818CF8',
-});
+} as const;
 
-const styles = StyleSheet.create(baseStyles);
+const styles = StyleSheet.create<{
+  container: ViewStyle;
+  scrollContent: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  statsCard: ViewStyle;
+  statItem: ViewStyle;
+  statNumber: TextStyle;
+  statLabel: TextStyle;
+  sectionTitle: TextStyle;
+  badgeGrid: ViewStyle;
+  badge: ViewStyle;
+  badgeLocked: ViewStyle;
+  badgeIcon: TextStyle;
+  badgeIconLocked: TextStyle;
+  badgeName: TextStyle;
+  badgeDesc: TextStyle;
+}>(baseStyles);
