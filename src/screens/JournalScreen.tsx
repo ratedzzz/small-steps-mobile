@@ -22,7 +22,7 @@ export default function JournalScreen() {
 
   const [journalText, setJournalText] = useState('');
   // Initialize entryId with a new ID, it will be overwritten if an entry exists
-  const [entryId, setEntryId] = useState(newId);
+  const [entryId, setEntryId] = useState(newId());
 
   useEffect(() => {
     const todayEntry = entries.find(e => e.date === today && !e.habitId);
