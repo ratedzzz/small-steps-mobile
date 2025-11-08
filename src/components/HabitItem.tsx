@@ -1,6 +1,6 @@
 // src/components/HabitItem.tsx
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { Habit } from '../types';
 import { useApp, newId } from '../store';
 
@@ -11,7 +11,7 @@ interface HabitItemProps {
 }
 
 export default function HabitItem({ habit, date, darkMode }: HabitItemProps) {
-  const { entries, upsertEntry } = useApp();
+  const { entries, upsertEntry, archiveHabit, deleteHabit } = useApp();
   const theme = darkMode ? darkTheme : lightTheme;
 
   // Check if habit is completed today
@@ -20,13 +20,56 @@ export default function HabitItem({ habit, date, darkMode }: HabitItemProps) {
   );
   const isCompleted = entry?.completed || false;
 
+  const showCompletionPrompt = () => {
+    Alert.alert(
+      'Habit Completed! 🎉',
+      `Great job completing "${habit.name}"! What would you like to do with this habit?`,
+      [
+        {
+          text: 'Keep',
+          onPress: () => {
+            // Just mark as complete, do nothing else
+          },
+        },
+        {
+          text: 'Archive',
+          onPress: () => {
+            archiveHabit(habit.id);
+            Alert.alert('Archived', `"${habit.name}" has been moved to archives.`);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteHabit(habit.id);
+            Alert.alert('Deleted', `"${habit.name}" has been deleted.`);
+          },
+        },
+      ]
+    );
+  };
+
   const toggleCompletion = () => {
-    upsertEntry({
-      id: entry?.id || newId(),
-      date,
-      habitId: habit.id,
-      completed: !isCompleted,
-    });
+    if (!isCompleted) {
+      // Mark as complete
+      upsertEntry({
+        id: entry?.id || newId(),
+        date,
+        habitId: habit.id,
+        completed: true,
+      });
+      // Show prompt
+      showCompletionPrompt();
+    } else {
+      // Unmark completion
+      upsertEntry({
+        id: entry?.id || newId(),
+        date,
+        habitId: habit.id,
+        completed: false,
+      });
+    }
   };
 
   return (

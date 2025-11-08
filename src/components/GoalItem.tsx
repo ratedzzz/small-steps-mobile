@@ -1,7 +1,8 @@
 // src/components/GoalItem.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { Goal } from '../types';
+import { useApp } from '../store';
 
 interface Props {
   goal: Goal;
@@ -9,18 +10,57 @@ interface Props {
 }
 
 export default function GoalItem({ goal, darkMode }: Props) {
+  const { archiveGoal, deleteGoal } = useApp();
   const theme = darkMode ? darkTheme : lightTheme;
-  
+
   // Mock progress - in real app, calculate from related habits
   const progress = Math.floor(Math.random() * 100);
+
+  const handleCompleteGoal = () => {
+    Alert.alert(
+      'Goal Completed! 🎉',
+      `Congratulations on completing "${goal.title}"! What would you like to do with this goal?`,
+      [
+        {
+          text: 'Keep',
+          onPress: () => {
+            // Just keep the goal as is
+          },
+        },
+        {
+          text: 'Archive',
+          onPress: () => {
+            archiveGoal(goal.id);
+            Alert.alert('Archived', `"${goal.title}" has been moved to archives.`);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteGoal(goal.id);
+            Alert.alert('Deleted', `"${goal.title}" has been deleted.`);
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={[styles.dot, { backgroundColor: goal.color }]} />
       <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>
-          {goal.title}
-        </Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {goal.title}
+          </Text>
+          <Pressable
+            onPress={handleCompleteGoal}
+            style={[styles.completeButton, { backgroundColor: goal.color }]}
+          >
+            <Text style={styles.completeText}>✓</Text>
+          </Pressable>
+        </View>
         {goal.dueDate && (
           <Text style={[styles.dueDate, { color: theme.textSecondary }]}>
             Due: {new Date(goal.dueDate).toLocaleDateString()}
@@ -57,10 +97,28 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   title: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+  },
+  completeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   dueDate: {
     fontSize: 12,

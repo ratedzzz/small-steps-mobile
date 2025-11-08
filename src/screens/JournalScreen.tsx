@@ -7,6 +7,7 @@ import {
   ScrollView,
   Pressable,
   useColorScheme,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, newId } from '../store';
@@ -18,22 +19,32 @@ export default function JournalScreen() {
   
   const { entries, upsertEntry } = useApp();
   const today = new Date().toISOString().split('T')[0];
-  
+
   const [journalText, setJournalText] = useState('');
+  // Initialize entryId with a new ID, it will be overwritten if an entry exists
+  const [entryId, setEntryId] = useState(newId);
 
   useEffect(() => {
     const todayEntry = entries.find(e => e.date === today && !e.habitId);
-    if (todayEntry?.text) {
-      setJournalText(todayEntry.text);
+    if (todayEntry) {
+      setJournalText(todayEntry.text || '');
+      setEntryId(todayEntry.id);
+    } else {
+      // Reset text if no entry is found (e.g. date changes)
+      setJournalText('');
+      // The ID is already set by useState initializer, no need to set it again
     }
   }, [entries, today]);
 
   const saveJournal = () => {
-    upsertEntry({
-      id: newId(),
-      date: today,
-      text: journalText,
-    });
+    if (journalText.trim()) {
+      upsertEntry({
+        id: entryId,
+        date: today,
+        text: journalText,
+      });
+      Alert.alert('Success', 'Journal entry saved!');
+    }
   };
 
   return (

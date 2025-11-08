@@ -6,83 +6,84 @@ import {
   StyleSheet,
   ScrollView,
   useColorScheme,
+  Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
+
+// Static badge definitions without unlock logic
+const ALL_BADGE_DEFINITIONS = [
+  {
+    id: 'first-habit',
+    icon: '🌱',
+    name: 'First Step',
+    description: 'Complete your first habit',
+  },
+  {
+    id: 'three-days',
+    icon: '🔥',
+    name: '3 Day Streak',
+    description: 'Complete habits 3 days in a row',
+  },
+  {
+    id: 'week-warrior',
+    icon: '⭐',
+    name: 'Week Warrior',
+    description: 'Complete habits 7 days in a row',
+  },
+  {
+    id: 'month-master',
+    icon: '🏆',
+    name: 'Month Master',
+    description: 'Complete habits 30 days in a row',
+  },
+  {
+    id: 'dedication',
+    icon: '👑',
+    name: 'Dedication',
+    description: 'Complete habits 100 days in a row',
+  },
+  {
+    id: 'century',
+    icon: '💯',
+    name: 'Century Club',
+    description: 'Complete 100 habits total',
+  },
+  {
+    id: 'consistency',
+    icon: '💪',
+    name: 'Consistency King',
+    description: 'Complete 500 habits total',
+  },
+];
 
 export default function BadgesScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
   const theme = darkMode ? darkStyles : lightStyles;
-  
+
   const { badges, entries, habits } = useApp();
 
-  // Calculate stats
+  // Calculate stats for display
   const completedHabits = entries.filter(e => e.completed && e.habitId).length;
   const uniqueDates = new Set(entries.filter(e => e.completed).map(e => e.date)).size;
-  
-  // Define all possible badges
-  const allBadges = [
-    {
-      id: 'first-habit',
-      icon: '🌱',
-      name: 'First Step',
-      description: 'Complete your first habit',
-      unlocked: completedHabits >= 1,
-    },
-    {
-      id: 'three-days',
-      icon: '🔥',
-      name: '3 Day Streak',
-      description: 'Complete habits 3 days in a row',
-      unlocked: uniqueDates >= 3,
-    },
-    {
-      id: 'week-warrior',
-      icon: '⭐',
-      name: 'Week Warrior',
-      description: 'Complete habits 7 days in a row',
-      unlocked: uniqueDates >= 7,
-    },
-    {
-      id: 'habit-collector',
-      icon: '📚',
-      name: 'Habit Collector',
-      description: 'Create 5 different habits',
-      unlocked: habits.length >= 5,
-    },
-    {
-      id: 'century',
-      icon: '💯',
-      name: 'Century Club',
-      description: 'Complete 100 habits total',
-      unlocked: completedHabits >= 100,
-    },
-    {
-      id: 'month-master',
-      icon: '🏆',
-      name: 'Month Master',
-      description: 'Complete habits 30 days in a row',
-      unlocked: uniqueDates >= 30,
-    },
-    {
-      id: 'dedication',
-      icon: '👑',
-      name: 'Dedication',
-      description: 'Complete habits 100 days in a row',
-      unlocked: uniqueDates >= 100,
-    },
-    {
-      id: 'consistency',
-      icon: '💪',
-      name: 'Consistency King',
-      description: 'Complete 500 habits total',
-      unlocked: completedHabits >= 500,
-    },
-  ];
 
-  const unlockedBadges = allBadges.filter(b => b.unlocked);
-  const lockedBadges = allBadges.filter(b => !b.unlocked);
+  // Use badges from store as single source of truth
+  const unlockedBadgeIds = new Set(badges.map(b => b.id));
+
+  const unlockedBadges = ALL_BADGE_DEFINITIONS.filter(b => unlockedBadgeIds.has(b.id));
+  const lockedBadges = ALL_BADGE_DEFINITIONS.filter(b => !unlockedBadgeIds.has(b.id));
+
+  const showBadgeDetails = (badge: typeof ALL_BADGE_DEFINITIONS[0]) => {
+    const isUnlocked = unlockedBadgeIds.has(badge.id);
+    const status = isUnlocked ? '✓ Unlocked' : '🔒 Locked';
+    Alert.alert(
+      `${badge.icon} ${badge.name}`,
+      `${status}\n\n${badge.description}`,
+      [{ text: 'OK' }]
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -128,14 +129,15 @@ export default function BadgesScreen() {
             </Text>
             <View style={styles.badgeGrid}>
               {unlockedBadges.map(badge => (
-                <View
+                <Pressable
                   key={badge.id}
+                  onPress={() => showBadgeDetails(badge)}
                   style={[styles.badge, { backgroundColor: theme.primary }]}
                 >
                   <Text style={styles.badgeIcon}>{badge.icon}</Text>
                   <Text style={styles.badgeName}>{badge.name}</Text>
                   <Text style={styles.badgeDesc}>{badge.description}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </>
@@ -149,9 +151,10 @@ export default function BadgesScreen() {
             </Text>
             <View style={styles.badgeGrid}>
               {lockedBadges.map(badge => (
-                <View
+                <Pressable
                   key={badge.id}
-                  style={[styles.badge, styles.badgeLocked, { 
+                  onPress={() => showBadgeDetails(badge)}
+                  style={[styles.badge, styles.badgeLocked, {
                     backgroundColor: theme.cardBg,
                     borderColor: theme.border,
                   }]}
@@ -165,7 +168,7 @@ export default function BadgesScreen() {
                   <Text style={[styles.badgeDesc, { color: theme.textSecondary }]}>
                     {badge.description}
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </>

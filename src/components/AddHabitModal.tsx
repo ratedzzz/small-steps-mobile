@@ -22,15 +22,18 @@ export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitMo
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366F1');
   const [reminderTime, setReminderTime] = useState('');
+  const [amPm, setAmPm] = useState<'AM' | 'PM'>('AM');
   const { addHabit } = useApp();
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleSave = () => {
     if (name.trim()) {
-      addHabit({ name, color, reminderTime: reminderTime || undefined });
+      const fullTime = reminderTime ? `${reminderTime} ${amPm}` : undefined;
+      addHabit({ name, color, reminderTime: fullTime });
       setName('');
       setColor('#6366F1');
       setReminderTime('');
+      setAmPm('AM');
       onClose();
     }
   };
@@ -78,24 +81,59 @@ export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitMo
             <Text style={[styles.label, { color: theme.text }]}>
               Reminder Time (Optional)
             </Text>
-            <TextInput
-              value={reminderTime}
-              onChangeText={setReminderTime}
-              placeholder="HH:MM (e.g., 09:00)"
-              placeholderTextColor={theme.placeholder}
-              style={[styles.input, { 
-                backgroundColor: theme.inputBg, 
-                color: theme.text,
-                borderColor: theme.border,
-              }]}
-            />
+            <View style={styles.timeRow}>
+              <TextInput
+                value={reminderTime}
+                onChangeText={setReminderTime}
+                placeholder="HH:MM (e.g., 09:00)"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="default"
+                style={[styles.timeInput, {
+                  backgroundColor: theme.inputBg,
+                  color: theme.text,
+                  borderColor: theme.border,
+                }]}
+              />
+              <View style={styles.amPmContainer}>
+                <Pressable
+                  onPress={() => setAmPm('AM')}
+                  style={[
+                    styles.amPmButton,
+                    amPm === 'AM' && { backgroundColor: color },
+                    amPm !== 'AM' && { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1 },
+                  ]}
+                >
+                  <Text style={[
+                    styles.amPmText,
+                    amPm === 'AM' ? { color: '#FFFFFF' } : { color: theme.text },
+                  ]}>
+                    AM
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setAmPm('PM')}
+                  style={[
+                    styles.amPmButton,
+                    amPm === 'PM' && { backgroundColor: color },
+                    amPm !== 'PM' && { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1 },
+                  ]}
+                >
+                  <Text style={[
+                    styles.amPmText,
+                    amPm === 'PM' ? { color: '#FFFFFF' } : { color: theme.text },
+                  ]}>
+                    PM
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
 
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={onClose}
                 style={[styles.button, styles.buttonSecondary]}
               >
-                <Text style={[styles.buttonText, { color: theme.text }]}>
+                <Text style={styles.buttonText}>
                   Cancel
                 </Text>
               </Pressable>
@@ -143,6 +181,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  timeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+  },
+  amPmContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  amPmButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  amPmText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   colorPicker: {
     width: '100%',
     marginBottom: 12,
@@ -159,7 +224,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonSecondary: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#64748B',
   },
   buttonText: {
     fontSize: 16,
