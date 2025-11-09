@@ -29,8 +29,16 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
+      const permission = await Notifications.requestPermissionsAsync();
+      const isGranted = ('granted' in permission)
+        ? // older/newer shapes that expose boolean `granted`
+          (permission as any).granted === true
+        : ('status' in permission)
+        ? // some SDKs return { status: 'granted' | 'denied' }
+          (permission as any).status === 'granted'
+        : false;
+
+      if (!isGranted) {
         console.log('Notification permissions not granted');
       }
     })();

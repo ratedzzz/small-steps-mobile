@@ -1,21 +1,23 @@
 // PolishedDemoScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  useColorScheme,
   Switch,
+  Text,
+  useColorScheme,
+  View,
+  type ViewStyle,
+  type TextStyle, // added TextStyle
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../store';
-import { getMotivationalQuote } from '../quotes';
-import AddHabitModal from '../components/AddHabitModal';
 import AddGoalModal from '../components/AddGoalModal';
-import HabitItem from '../components/HabitItem';
+import AddHabitModal from '../components/AddHabitModal';
 import GoalItem from '../components/GoalItem';
+import HabitItem from '../components/HabitItem';
+import { getMotivationalQuote } from '../quotes';
+import { useApp } from '../store';
 
 export default function HomeScreen() {
   const systemTheme = useColorScheme();
@@ -25,7 +27,32 @@ export default function HomeScreen() {
   const [dailyQuote, setDailyQuote] = useState('');
   
   const { habits, goals, entries, pro } = useApp();
-  const theme = darkMode ? darkStyles : lightStyles;
+
+  type Theme = {
+    bg: string;
+    cardBg: string;
+    text: string;
+    textSecondary: string;
+    primary: string;
+  };
+
+  const lightTheme: Theme = {
+    bg: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#64748B',
+    primary: '#6366F1',
+  };
+
+  const darkTheme: Theme = {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    primary: '#818CF8',
+  };
+
+  const theme: Theme = darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
@@ -43,8 +70,8 @@ export default function HomeScreen() {
   const completedToday = todayEntries.filter(e => e.completed).length;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.container as ViewStyle, { backgroundColor: theme.bg }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent as ViewStyle}>
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -179,7 +206,37 @@ export default function HomeScreen() {
   );
 }
 
-const baseStyles = {
+type Styles = {
+  container: ViewStyle;
+  scrollContent: ViewStyle;
+  header: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  themeToggle: ViewStyle;
+  themeLabel: TextStyle;
+  quoteCard: ViewStyle;
+  quoteIcon: TextStyle;
+  quoteText: TextStyle;
+  progressCard: ViewStyle;
+  progressTitle: TextStyle;
+  progressCircle: ViewStyle;
+  progressNumber: TextStyle;
+  progressLabel: TextStyle;
+  section: ViewStyle;
+  sectionHeader: ViewStyle;
+  sectionTitle: TextStyle;
+  addButton: ViewStyle;
+  addButtonText: TextStyle;
+  emptyState: ViewStyle;
+  emptyText: TextStyle;
+  proCard: ViewStyle;
+  proTitle: TextStyle;
+  proText: TextStyle;
+  proButton: ViewStyle;
+  proButtonText: TextStyle;
+};
+
+const baseStyles: Styles = {
   container: {
     flex: 1,
   },
@@ -204,10 +261,10 @@ const baseStyles = {
   themeToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   themeLabel: {
     fontSize: 14,
+    marginRight: 8, // replaced gap with marginRight
   },
   quoteCard: {
     padding: 20,
@@ -330,22 +387,4 @@ const baseStyles = {
   },
 };
 
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
-});
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);
+const styles = StyleSheet.create<Styles>(baseStyles);

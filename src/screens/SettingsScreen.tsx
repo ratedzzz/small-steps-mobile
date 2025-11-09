@@ -20,14 +20,20 @@ export default function SettingsScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
   const theme = darkMode ? darkStyles : lightStyles;
+
   const { habits, goals, entries, badges, pro, setPro } = useApp();
 
   const requestNotificationPermissions = async () => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status === 'granted') {
-      Alert.alert('Success', 'Notifications enabled!');
-    } else {
-      Alert.alert('Permissions Required', 'Please enable notifications in your device settings.');
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        Alert.alert('Success', 'Notifications enabled!');
+      } else {
+        Alert.alert('Permissions Required', 'Please enable notifications in your device settings.');
+      }
+    } catch (err) {
+      console.error('Notification permission error:', err);
+      Alert.alert('Error', 'Unable to request notification permissions.');
     }
   };
 
@@ -44,7 +50,7 @@ export default function SettingsScreen() {
       const jsonString = JSON.stringify(data, null, 2);
 
       if (Platform.OS === 'web') {
-        // For web, download as file
+        // Web download
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -54,8 +60,13 @@ export default function SettingsScreen() {
         URL.revokeObjectURL(url);
         Alert.alert('Success', 'Data exported successfully!');
       } else {
-        // For mobile, save to file system and share
-        const fileUri = FileSystem.documentDirectory + `small-steps-backup-${new Date().toISOString().split('T')[0]}.json`;
+        // Native share
+        const baseDir = getWritableDirectory();
+        if (!baseDir) {
+          Alert.alert('Error', 'No writable file directory available on this device.');
+          return;
+        }
+        const fileUri = `${baseDir}small-steps-backup-${new Date().toISOString().split('T')[0]}.json`;
         await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
         await Share.share({
@@ -66,27 +77,58 @@ export default function SettingsScreen() {
         Alert.alert('Success', 'Data exported successfully!');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to export data. Please try again.');
       console.error('Export error:', error);
+      Alert.alert('Error', 'Failed to export data. Please try again.');
     }
   };
 
   const clearAllData = () => {
-    Alert.alert(
-      'Clear All Data',
-      'Are you sure? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: () => {
-            // In real app, would call store reset function
-            Alert.alert('Data Cleared', 'All your data has been removed.');
-          },
+    Alert.alert('Clear All Data', 'Are you sure? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear',
+        style: 'destructive',
+        onPress: () => {
+          // TODO: hook up your store reset
+          Alert.alert('Data Cleared', 'All your data has been removed.');
         },
-      ]
-    );
+      },
+    ]);
+  };
+
+  // ----- Render helpers (avoid nested ternaries that can trip TS parsing) -----
+  const renderArchivedHabits = () => {
+    const archived = habits.filter(h => h.archived);
+    if (archived.length === 0) {
+      return (
+        <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
+          No archived habits
+        </Text>
+      );
+    }
+    return archived.map(habit => (
+      <View key={habit.id} style={styles.archiveItem}>
+        <View style={[styles.archiveDot, { backgroundColor: habit.color }]} />
+        <Text style={[styles.archiveText, { color: theme.text }]}>{habit.name}</Text>
+      </View>
+    ));
+  };
+
+  const renderArchivedGoals = () => {
+    const archived = goals.filter(g => g.archived);
+    if (archived.length === 0) {
+      return (
+        <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
+          No archived goals
+        </Text>
+      );
+    }
+    return archived.map(goal => (
+      <View key={goal.id} style={styles.archiveItem}>
+        <View style={[styles.archiveSquare, { backgroundColor: goal.color }]} />
+        <Text style={[styles.archiveText, { color: theme.text }]}>{goal.title}</Text>
+      </View>
+    ));
   };
 
   return (
@@ -97,34 +139,30 @@ export default function SettingsScreen() {
         {/* Stats Card */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Your Stats</Text>
+
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Total Habits:
-            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Habits:</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {habits.filter(h => !h.archived).length}
             </Text>
           </View>
+
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Total Goals:
-            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Goals:</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {goals.filter(g => !g.archived).length}
             </Text>
           </View>
+
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Journal Entries:
-            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Journal Entries:</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {entries.filter(e => !e.habitId && e.text).length}
             </Text>
           </View>
+
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Badges Earned:
-            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Badges Earned:</Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {badges.filter(b => b.unlockedAt).length}
             </Text>
@@ -138,38 +176,14 @@ export default function SettingsScreen() {
           <Text style={[styles.archiveSubtitle, { color: theme.textSecondary }]}>
             Habits ({habits.filter(h => h.archived).length})
           </Text>
-          {habits.filter(h => h.archived).length === 0 ? (
-            <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
-              No archived habits
-            </Text>
-          ) : (
-            habits.filter(h => h.archived).map(habit => (
-              <View key={habit.id} style={styles.archiveItem}>
-                <View style={[styles.archiveDot, { backgroundColor: habit.color }]} />
-                <Text style={[styles.archiveText, { color: theme.text }]}>
-                  {habit.name}
-                </Text>
-              </View>
-            ))
-          )}
+          {renderArchivedHabits()}
 
-          <Text style={[styles.archiveSubtitle, { color: theme.textSecondary, marginTop: 16 }]}>
+          <Text
+            style={[styles.archiveSubtitle, { color: theme.textSecondary, marginTop: 16 }]}
+          >
             Goals ({goals.filter(g => g.archived).length})
           </Text>
-          {goals.filter(g => g.archived).length === 0 ? (
-            <Text style={[styles.emptyArchive, { color: theme.textSecondary }]}>
-              No archived goals
-            </Text>
-          ) : (
-            goals.filter(g => g.archived).map(goal => (
-              <View key={goal.id} style={styles.archiveItem}>
-                <View style={[styles.archiveSquare, { backgroundColor: goal.color }]} />
-                <Text style={[styles.archiveText, { color: theme.text }]}>
-                  {goal.title}
-                </Text>
-              </View>
-            ))
-          )}
+          {renderArchivedGoals()}
         </View>
 
         {/* Subscription */}
@@ -188,21 +202,19 @@ export default function SettingsScreen() {
               </Pressable>
             )}
           </View>
-          {pro && (
+          {pro ? (
             <Text style={[styles.proFeatures, { color: theme.textSecondary }]}>
               ✓ Unlimited habits{'\n'}
               ✓ Advanced analytics{'\n'}
               ✓ Custom themes{'\n'}
               ✓ Priority support
             </Text>
-          )}
+          ) : null}
         </View>
 
         {/* Notifications */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>
-            Notifications
-          </Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Notifications</Text>
           <Pressable
             onPress={requestNotificationPermissions}
             style={[styles.button, { backgroundColor: theme.primary }]}
@@ -216,21 +228,11 @@ export default function SettingsScreen() {
 
         {/* Data Management */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>
-            Data Management
-          </Text>
-          <Pressable
-            onPress={exportData}
-            style={[styles.button, styles.buttonSecondary]}
-          >
-            <Text style={styles.buttonText}>
-              Export Data
-            </Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Data Management</Text>
+          <Pressable onPress={exportData} style={[styles.button, styles.buttonSecondary]}>
+            <Text style={styles.buttonText}>Export Data</Text>
           </Pressable>
-          <Pressable
-            onPress={clearAllData}
-            style={[styles.button, styles.buttonDanger]}
-          >
+          <Pressable onPress={clearAllData} style={[styles.button, styles.buttonDanger]}>
             <Text style={styles.buttonText}>Clear All Data</Text>
           </Pressable>
         </View>
@@ -248,6 +250,10 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Styles & Theme                                                     */
+/* ------------------------------------------------------------------ */
 
 const baseStyles = {
   container: { flex: 1 },
@@ -297,28 +303,46 @@ const baseStyles = {
   aboutText: { fontSize: 14, lineHeight: 22 },
   archiveSubtitle: { fontSize: 14, fontWeight: '600', marginTop: 8, marginBottom: 8 },
   emptyArchive: { fontSize: 14, fontStyle: 'italic', marginBottom: 8 },
-  archiveItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 10 },
-  archiveDot: { width: 12, height: 12, borderRadius: 6 },
-  archiveSquare: { width: 12, height: 12, borderRadius: 2 },
+  archiveItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    // If your RN version supports it, `gap` is fine. If not, swap for marginRight on the dot/square.
+    gap: 10,
+  },
+  archiveDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
+  archiveSquare: { width: 12, height: 12, borderRadius: 2, marginRight: 10 },
   archiveText: { fontSize: 14 },
 };
 
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
+// Theme palettes (plain JS objects)
+const lightStyles = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',
   text: '#0F172A',
   textSecondary: '#64748B',
   primary: '#6366F1',
-});
+};
 
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
+const darkStyles = {
   bg: '#0F172A',
   cardBg: '#1E293B',
   text: '#F1F5F9',
   textSecondary: '#94A3B8',
   primary: '#818CF8',
-});
+};
 
-const styles = StyleSheet.create(baseStyles);
+// Cast to any to avoid union style inference issues
+const styles = StyleSheet.create(baseStyles as any);
+
+/* ------------------------------------------------------------------ */
+/* File System Helper                                                 */
+/* ------------------------------------------------------------------ */
+
+// Safely access a writable directory from expo-file-system.
+const getWritableDirectory = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fs: any = FileSystem as any;
+  // Prefer documentDirectory, fall back to cacheDirectory, otherwise ''
+  return fs.documentDirectory || fs.cacheDirectory || '';
+};

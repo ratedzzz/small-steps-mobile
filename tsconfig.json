@@ -1,15 +1,17 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "noEmit": true,
+    "target": "es2019",
+    "module": "esnext",
+    "jsx": "react-native",
+    "moduleResolution": "node",
+    "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "strict": false,
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": true
   },
   "include": [
     "app/**/*.ts",
@@ -17,7 +19,8 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-, "src/components/NewItemButtons.tsx"  ],
+    "expo-env.d.ts",
+    "src/components/NewItemButtons.tsx"
+  ],
   "exclude": ["node_modules", "**/node_modules/*"]
 }

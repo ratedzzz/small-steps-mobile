@@ -1,31 +1,54 @@
-import React, { useState, useColorScheme } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { RegisteredStyle, ScrollView, StyleSheet, Text, TextStyle, useColorScheme, View, ViewStyle } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../store';
+
+// Add small local types for calendar markings
+type CalendarDot = {
+  key: string;
+  color: string;
+};
+type CalendarMarkedDate = {
+  dots?: CalendarDot[];
+  selected?: boolean;
+  selectedColor?: string;
+};
+
+// Add a simple Theme type for color tokens
+type Theme = {
+  bg: string;
+  cardBg: string;
+  text: string;
+  textSecondary: string;
+  primary: string;
+};
 
 export default function CalendarScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
+  // Use plain theme objects (strings) so theme.primary is typed as string
+  const theme: Theme = darkMode ? darkTheme : lightTheme;
   
   const { habits, goals, entries } = useApp();
   const [selectedDate, setSelectedDate] = useState('');
 
   // Build marked dates object for the calendar
-  const markedDates = {};
+  const markedDates: Record<string, CalendarMarkedDate> = {};
 
   entries.forEach(entry => {
     if (entry.completed && entry.habitId) {
       const habit = habits.find(h => h.id === entry.habitId);
       if (habit) {
-        if (!markedDates[entry.date]) {
-          markedDates[entry.date] = { dots: [] };
+        const dateKey = entry.date;
+        if (!markedDates[dateKey]) {
+          markedDates[dateKey] = { dots: [] };
         }
-        if (!markedDates[entry.date].dots) {
-          markedDates[entry.date].dots = [];
+        if (!markedDates[dateKey].dots) {
+          markedDates[dateKey].dots = [];
         }
-        markedDates[entry.date].dots.push({
+        // non-null assertion used because we've ensured dots exists above
+        markedDates[dateKey].dots!.push({
           key: `habit-${habit.id}`,
           color: habit.color,
         });
@@ -36,14 +59,15 @@ export default function CalendarScreen() {
   // Add goals to calendar (as dots with square indicator)
   goals.forEach(goal => {
     if (goal.dueDate) {
-      if (!markedDates[goal.dueDate]) {
-        markedDates[goal.dueDate] = { dots: [] };
+      const dateKey = goal.dueDate;
+      if (!markedDates[dateKey]) {
+        markedDates[dateKey] = { dots: [] };
       }
-      if (!markedDates[goal.dueDate].dots) {
-        markedDates[goal.dueDate].dots = [];
+      if (!markedDates[dateKey].dots) {
+        markedDates[dateKey].dots = [];
       }
-      // Add goal as a dot - we'll style it differently in the legend
-      markedDates[goal.dueDate].dots.push({
+      // non-null assertion used because we've ensured dots exists above
+      markedDates[dateKey].dots!.push({
         key: `goal-${goal.id}`,
         color: goal.color,
       });
@@ -75,10 +99,10 @@ export default function CalendarScreen() {
     : [];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.title, { color: theme.text }]}>Calendar</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+    <SafeAreaView style={[styles.container as RegisteredStyle<ViewStyle>, { backgroundColor: theme.bg }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent as RegisteredStyle<ViewStyle>}>
+        <Text style={[styles.title as RegisteredStyle<TextStyle>, { color: theme.text }]}>Calendar</Text>
+        <Text style={[styles.subtitle as RegisteredStyle<TextStyle>, { color: theme.textSecondary }]}>
           Track your progress over time
         </Text>
 
@@ -115,7 +139,7 @@ export default function CalendarScreen() {
         {/* Selected Date Details */}
         {selectedDate && (
           <View style={[styles.detailsCard, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.detailsTitle, { color: theme.text }]}>
+            <Text style={[styles.detailsTitle as RegisteredStyle<TextStyle>, { color: theme.text }]}>
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
@@ -126,7 +150,7 @@ export default function CalendarScreen() {
             
             {selectedEntries.length > 0 && (
               <>
-                <Text style={[styles.detailsSubtitle, { color: theme.textSecondary }]}>
+                <Text style={[styles.detailsSubtitle as RegisteredStyle<TextStyle>, { color: theme.textSecondary }]}>
                   Completed Habits:
                 </Text>
                 {selectedEntries.map(entry => {
@@ -136,7 +160,7 @@ export default function CalendarScreen() {
                       <View
                         style={[styles.habitDot, { backgroundColor: habit.color }]}
                       />
-                      <Text style={[styles.habitName, { color: theme.text }]}>
+                      <Text style={[styles.habitName as RegisteredStyle<TextStyle>, { color: theme.text }]}>
                         {habit.name}
                       </Text>
                     </View>
@@ -147,7 +171,7 @@ export default function CalendarScreen() {
 
             {selectedGoals.length > 0 && (
               <>
-                <Text style={[styles.detailsSubtitle, { color: theme.textSecondary, marginTop: 12 }]}>
+                <Text style={[styles.detailsSubtitle as RegisteredStyle<TextStyle>, { color: theme.textSecondary, marginTop: 12 }]}>
                   Goals Due:
                 </Text>
                 {selectedGoals.map(goal => (
@@ -155,7 +179,7 @@ export default function CalendarScreen() {
                     <View
                       style={[styles.goalSquare, { backgroundColor: goal.color }]}
                     />
-                    <Text style={[styles.habitName, { color: theme.text }]}>
+                    <Text style={[styles.habitName as RegisteredStyle<TextStyle>, { color: theme.text }]}>
                       {goal.title}
                     </Text>
                   </View>
@@ -164,7 +188,7 @@ export default function CalendarScreen() {
             )}
 
             {selectedEntries.length === 0 && selectedGoals.length === 0 && (
-              <Text style={[styles.noData, { color: theme.textSecondary }]}>
+              <Text style={[styles.noData as RegisteredStyle<TextStyle>, { color: theme.textSecondary }]}>
                 No habits completed or goals due on this day
               </Text>
             )}
@@ -173,17 +197,17 @@ export default function CalendarScreen() {
 
         {/* Legend */}
         <View style={[styles.legendCard, { backgroundColor: theme.cardBg }]}>
-          <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
+          <Text style={[styles.legendTitle as RegisteredStyle<TextStyle>, { color: theme.text }]}>Legend</Text>
 
           {habits.length > 0 && (
             <>
-              <Text style={[styles.legendSubtitle, { color: theme.textSecondary }]}>
+              <Text style={[styles.legendSubtitle as RegisteredStyle<TextStyle>, { color: theme.textSecondary }]}>
                 Habits (Circles)
               </Text>
               {habits.map(habit => (
                 <View key={habit.id} style={styles.legendRow}>
                   <View style={[styles.legendDot, { backgroundColor: habit.color }]} />
-                  <Text style={[styles.legendText, { color: theme.text }]}>
+                  <Text style={[styles.legendText as RegisteredStyle<TextStyle>, { color: theme.text }]}>
                     {habit.name}
                   </Text>
                 </View>
@@ -193,13 +217,13 @@ export default function CalendarScreen() {
 
           {goals.length > 0 && (
             <>
-              <Text style={[styles.legendSubtitle, { color: theme.textSecondary, marginTop: 12 }]}>
+              <Text style={[styles.legendSubtitle as RegisteredStyle<TextStyle>, { color: theme.textSecondary, marginTop: 12 }]}>
                 Goals (Squares)
               </Text>
               {goals.map(goal => (
                 <View key={goal.id} style={styles.legendRow}>
                   <View style={[styles.legendSquare, { backgroundColor: goal.color }]} />
-                  <Text style={[styles.legendText, { color: theme.text }]}>
+                  <Text style={[styles.legendText as RegisteredStyle<TextStyle>, { color: theme.text }]}>
                     {goal.title}
                   </Text>
                 </View>
@@ -208,7 +232,7 @@ export default function CalendarScreen() {
           )}
 
           {habits.length === 0 && goals.length === 0 && (
-            <Text style={[styles.noData, { color: theme.textSecondary }]}>
+            <Text style={[styles.noData as RegisteredStyle<TextStyle>, { color: theme.textSecondary }]}>
               Add habits and goals to see them here
             </Text>
           )}
@@ -218,7 +242,31 @@ export default function CalendarScreen() {
   );
 }
 
-const baseStyles = {
+// Replace the untyped baseStyles with a typed Styles interface and typed baseStyles
+interface Styles {
+  container: ViewStyle;
+  scrollContent: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  calendarCard: ViewStyle;
+  detailsCard: ViewStyle;
+  detailsTitle: TextStyle;
+  detailsSubtitle: TextStyle;
+  habitRow: ViewStyle;
+  habitDot: ViewStyle;
+  goalSquare: ViewStyle;
+  habitName: TextStyle;
+  noData: TextStyle;
+  legendCard: ViewStyle;
+  legendTitle: TextStyle;
+  legendSubtitle: TextStyle;
+  legendRow: ViewStyle;
+  legendDot: ViewStyle;
+  legendSquare: ViewStyle;
+  legendText: TextStyle;
+}
+
+const baseStyles: Styles = {
   container: {
     flex: 1,
   },
@@ -328,22 +376,21 @@ const baseStyles = {
   },
 };
 
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
+const lightTheme: Theme = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',
   text: '#0F172A',
   textSecondary: '#64748B',
   primary: '#6366F1',
-});
+};
 
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
+const darkTheme: Theme = {
   bg: '#0F172A',
   cardBg: '#1E293B',
   text: '#F1F5F9',
   textSecondary: '#94A3B8',
   primary: '#818CF8',
-});
+};
 
-const styles = StyleSheet.create(baseStyles);
+// Replace the explicit generic usage with a non-generic call and a permissive cast
+const styles = StyleSheet.create(baseStyles as Record<string, any>);
