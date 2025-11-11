@@ -1,4 +1,4 @@
-// PolishedDemoScreen.tsx
+// src/screens/HomeScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,15 +17,45 @@ import AddGoalModal from '../components/AddGoalModal';
 import HabitItem from '../components/HabitItem';
 import GoalItem from '../components/GoalItem';
 
+type ThemeTokens = {
+  bg: string;
+  cardBg: string;
+  text: string;
+  textSecondary: string;
+  primary: string;
+};
+
+const LIGHT: ThemeTokens = {
+  bg: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  primary: '#6366F1',
+};
+
+const DARK: ThemeTokens = {
+  bg: '#0F172A',
+  cardBg: '#1E293B',
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  primary: '#818CF8',
+};
+
 export default function HomeScreen() {
   const systemTheme = useColorScheme();
-  const [darkMode, setDarkMode] = useState(systemTheme === 'dark');
+  const [darkMode, setDarkMode] = useState<boolean>(systemTheme === 'dark');
+
+  // Keep the toggle in sync if the user changes OS theme while app is running
+  useEffect(() => {
+    setDarkMode(systemTheme === 'dark');
+  }, [systemTheme]);
+
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [dailyQuote, setDailyQuote] = useState('');
-  
-  const { habits, goals, entries, pro } = useApp();
-  const theme = darkMode ? darkStyles : lightStyles;
+
+  const { habits = [], goals = [], entries = [], pro } = useApp();
+  const theme = darkMode ? DARK : LIGHT;
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
@@ -33,10 +63,10 @@ export default function HomeScreen() {
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
-  
+
   // Calculate completion for today
-  const todayEntries = entries.filter(e => e.date === today && e.habitId);
-  const completedToday = todayEntries.filter(e => e.completed).length;
+  const todayEntries = (entries || []).filter((e: any) => e?.date === today && e?.habitId);
+  const completedToday = todayEntries.filter((e: any) => e?.completed).length;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -46,20 +76,21 @@ export default function HomeScreen() {
           <View>
             <Text style={[styles.title, { color: theme.primary }]}>Small Steps</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                month: 'short', 
-                day: 'numeric' 
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
               })}
             </Text>
           </View>
+
           <View style={styles.themeToggle}>
-            <Text style={[styles.themeLabel, { color: theme.text }]}>Dark</Text>
+            <Text style={[styles.themeLabel, { color: theme.text, marginRight: 8 }]}>Dark</Text>
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
-              thumbColor={darkMode ? '#fff' : '#fff'}
+              trackColor={{ false: '#D1D5DB', true: theme.primary }}
+              thumbColor="#FFFFFF"
             />
           </View>
         </View>
@@ -68,23 +99,19 @@ export default function HomeScreen() {
         <View style={[styles.quoteCard, { backgroundColor: theme.cardBg }]}>
           <Text style={styles.quoteIcon}>✨</Text>
           <Text style={[styles.quoteText, { color: theme.text }]}>
-            "{dailyQuote}"
+            {dailyQuote ? `"${dailyQuote}"` : '“Small daily improvements lead to stunning results.”'}
           </Text>
         </View>
 
         {/* Today's Progress */}
         {habits.length > 0 && (
           <View style={[styles.progressCard, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.progressTitle, { color: theme.text }]}>
-              Today's Progress
-            </Text>
+            <Text style={[styles.progressTitle, { color: theme.text }]}>Today's Progress</Text>
             <View style={styles.progressCircle}>
               <Text style={[styles.progressNumber, { color: theme.primary }]}>
                 {completedToday}/{habits.length}
               </Text>
-              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
-                completed
-              </Text>
+              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>completed</Text>
             </View>
           </View>
         )}
@@ -92,9 +119,7 @@ export default function HomeScreen() {
         {/* Habits Section */}
         <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Daily Habits
-            </Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Habits</Text>
             <Pressable
               onPress={() => setShowAddHabit(true)}
               style={[styles.addButton, { backgroundColor: theme.primary }]}
@@ -110,13 +135,8 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            habits.map((habit) => (
-              <HabitItem
-                key={habit.id}
-                habit={habit}
-                date={today}
-                darkMode={darkMode}
-              />
+            habits.map((habit: any) => (
+              <HabitItem key={habit.id} habit={habit} date={today} darkMode={darkMode} />
             ))
           )}
         </View>
@@ -140,15 +160,18 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            goals.map((goal) => (
-              <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />
-            ))
+            goals.map((goal: any) => <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />)
           )}
         </View>
 
         {/* Pro Upgrade Banner */}
         {!pro && (
-          <Pressable style={[styles.proCard, { backgroundColor: '#6366F1' }]}>
+          <Pressable
+            style={[styles.proCard, { backgroundColor: theme.primary }]}
+            onPress={() => {
+              // TODO: navigate to paywall or open modal
+            }}
+          >
             <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
             <Text style={styles.proText}>
               Unlock unlimited habits, advanced analytics, and more!
@@ -175,7 +198,11 @@ export default function HomeScreen() {
   );
 }
 
-const baseStyles = {
+/* ------------------------------------------------------------------ */
+/* Styles - keep ONLY real style objects here (no color tokens)        */
+/* ------------------------------------------------------------------ */
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -200,7 +227,6 @@ const baseStyles = {
   themeToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   themeLabel: {
     fontSize: 14,
@@ -324,24 +350,4 @@ const baseStyles = {
     fontWeight: 'bold',
     fontSize: 14,
   },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);

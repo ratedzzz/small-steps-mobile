@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Habit, Goal, JournalEntry, Badge, ID } from './types';
 import { evalBadges } from './badges';
 
+
 export const newId = () => Math.random().toString(36).slice(2, 10);
 
 export type State = {

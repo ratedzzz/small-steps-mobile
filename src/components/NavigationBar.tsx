@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 
 interface Props {
   currentScreen: string;
@@ -8,29 +8,28 @@ interface Props {
 
 export default function NavigationBar({ currentScreen, onNavigate }: Props) {
   const tabs = [
-    { id: 'home', icon: '🏠', label: 'Home' },
-    { id: 'calendar', icon: '📅', label: 'Calendar' },
-    { id: 'journal', icon: '📝', label: 'Journal' },
-    { id: 'badges', icon: '🏆', label: 'Badges' },
-    { id: 'settings', icon: '⚙️', label: 'Settings' },
+    { id: "home", icon: "🏠", label: "Home" },
+    { id: "calendar", icon: "📅", label: "Calendar" },
+    { id: "journal", icon: "📝", label: "Journal" },
+    { id: "badges", icon: "🏆", label: "Badges" },
+    { id: "settings", icon: "⚙️", label: "Settings" },
   ];
 
   return (
     <View style={styles.container}>
-      {tabs.map(tab => (
+      {tabs.map((tab) => (
         <Pressable
           key={tab.id}
           onPress={() => onNavigate(tab.id)}
-          style={[
-            styles.tab,
-            currentScreen === tab.id && styles.tabActive,
-          ]}
+          style={[styles.tab, currentScreen === tab.id && styles.tabActive]}
         >
           <Text style={styles.icon}>{tab.icon}</Text>
-          <Text style={[
-            styles.label,
-            currentScreen === tab.id && styles.labelActive,
-          ]}>
+          <Text
+            style={[
+              styles.label,
+              currentScreen === tab.id && styles.labelActive,
+            ]}
+          >
             {tab.label}
           </Text>
         </Pressable>
@@ -41,17 +40,17 @@ export default function NavigationBar({ currentScreen, onNavigate }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: "#E5E7EB",
     paddingBottom: 20,
     paddingTop: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -59,12 +58,12 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 8,
   },
   tabActive: {
     borderTopWidth: 2,
-    borderTopColor: '#6366F1',
+    borderTopColor: "#6366F1",
   },
   icon: {
     fontSize: 24,
@@ -72,10 +71,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   labelActive: {
-    color: '#6366F1',
-    fontWeight: 'bold',
+    color: "#6366F1",
+    fontWeight: "bold",
   },
 });

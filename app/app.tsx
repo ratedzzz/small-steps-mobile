@@ -1,10 +1,8 @@
-// app/app.tsx - Updated with correct notification trigger type and sound property
-
-import * as Notifications from 'expo-notifications';
-import { SchedulableTriggerInputTypes } from 'expo-notifications';
+// app/app.tsx
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import NavigationBar from '../src/components/NavigationBar';
 import BadgesScreen from '../src/screens/BadgesScreen';
 import CalendarScreen from '../src/screens/CalendarScreen';
@@ -13,57 +11,41 @@ import JournalScreen from '../src/screens/JournalScreen';
 import SettingsScreen from '../src/screens/SettingsScreen';
 import { useApp } from '../src/store';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+import {
+  setupNotificationHandler,
+  getPushTokenSafely,
+  scheduleDailyLocalNotification,
+  cancelAll,
+} from '../src/notifications';
+
+type Screen = 'home' | 'calendar' | 'journal' | 'badges' | 'settings';
+const isScreen = (s: string): s is Screen =>
+  s === 'home' || s === 'calendar' || s === 'journal' || s === 'badges' || s === 'settings';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('home');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const { habits } = useApp();
 
   useEffect(() => {
+    // Set handler and (if supported) try to fetch a push token
     (async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Notification permissions not granted');
-      }
+      await setupNotificationHandler();
+      await getPushTokenSafely(); // no-op in Expo Go Android
     })();
   }, []);
 
   useEffect(() => {
-    const scheduleNotifications = async () => {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-
+    (async () => {
+      await cancelAll(); // avoid stacking duplicates
       for (const habit of habits) {
-        if (habit.reminderTime) {
-          const [hours, minutes] = habit.reminderTime.split(':').map(Number);
-
-          const trigger: Notifications.NotificationTriggerInput = {
-            type: SchedulableTriggerInputTypes.CALENDAR,
-            hour: hours,
-            minute: minutes,
-            repeats: true,
-          };
-
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Small Steps Reminder 🌟',
-              body: `Time for: ${habit.name}`,
-              sound: 'default',
-            },
-            trigger,
-          });
-        }
+        if (!habit.reminderTime) continue;
+        const [hour, minute] = habit.reminderTime.split(':').map((n) => Number(n) || 0);
+        await scheduleDailyLocalNotification(hour, minute, {
+          title: 'Small Steps Reminder 🌟',
+          body: `Time for: ${habit.name}`,
+        });
       }
-    };
-
-    scheduleNotifications();
+    })();
   }, [habits]);
 
   const renderScreen = () => {
@@ -83,21 +65,20 @@ export default function App() {
     }
   };
 
+  const handleNavigate = (screen: string) => {
+    if (isScreen(screen)) setCurrentScreen(screen);
+  };
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
         {renderScreen()}
-        <NavigationBar
-          currentScreen={currentScreen}
-          onNavigate={setCurrentScreen}
-        />
+        <NavigationBar currentScreen={currentScreen} onNavigate={handleNavigate} />
       </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });

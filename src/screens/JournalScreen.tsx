@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/screens/JournalScreen.tsx
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,28 +12,66 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, newId } from '../store';
 
+type ThemeTokens = {
+  bg: string;
+  cardBg: string;
+  text: string;
+  textSecondary: string;
+  inputBg: string;
+  border: string;
+  placeholder: string;
+  primary: string;
+};
+
+const LIGHT: ThemeTokens = {
+  bg: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  inputBg: '#F8FAFC',
+  border: '#E2E8F0',
+  placeholder: '#94A3B8',
+  primary: '#6366F1',
+};
+
+const DARK: ThemeTokens = {
+  bg: '#0F172A',
+  cardBg: '#1E293B',
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  inputBg: '#0F172A',
+  border: '#334155',
+  placeholder: '#64748B',
+  primary: '#818CF8',
+};
+
 export default function JournalScreen() {
   const systemTheme = useColorScheme();
   const darkMode = systemTheme === 'dark';
-  const theme = darkMode ? darkStyles : lightStyles;
-  
-  const { entries, upsertEntry } = useApp();
-  const today = new Date().toISOString().split('T')[0];
-  
+  const theme = darkMode ? DARK : LIGHT;
+
+  // Defensive defaults in case store arrays are undefined
+  const { entries = [], upsertEntry } = useApp();
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   const [journalText, setJournalText] = useState('');
 
+  // Find today's free-form journal entry (non-habit)
+  const todaysJournal = useMemo(
+    () => entries.find((e: any) => e?.date === today && !e?.habitId),
+    [entries, today]
+  );
+
   useEffect(() => {
-    const todayEntry = entries.find(e => e.date === today && !e.habitId);
-    if (todayEntry?.text) {
-      setJournalText(todayEntry.text);
-    }
-  }, [entries, today]);
+    if (todaysJournal?.text) setJournalText(todaysJournal.text);
+  }, [todaysJournal]);
 
   const saveJournal = () => {
     upsertEntry({
-      id: newId(),
+      id: todaysJournal?.id ?? newId(),
       date: today,
       text: journalText,
+      // keep it a free-form journal (no habitId)
     });
   };
 
@@ -61,30 +100,28 @@ export default function JournalScreen() {
             multiline
             numberOfLines={12}
             textAlignVertical="top"
-            style={[styles.journalInput, { 
-              backgroundColor: theme.inputBg, 
-              color: theme.text,
-              borderColor: theme.border,
-            }]}
+            style={[
+              styles.journalInput,
+              {
+                backgroundColor: theme.inputBg,
+                color: theme.text,
+                borderColor: theme.border,
+              },
+            ]}
           />
-          
-          <Pressable
-            onPress={saveJournal}
-            style={[styles.saveButton, { backgroundColor: theme.primary }]}
-          >
+
+          <Pressable onPress={saveJournal} style={[styles.saveButton, { backgroundColor: theme.primary }]}>
             <Text style={styles.saveButtonText}>Save Entry</Text>
           </Pressable>
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={[styles.promptTitle, { color: theme.text }]}>
-            Prompts to consider:
-          </Text>
+          <Text style={[styles.promptTitle, { color: theme.text }]}>Prompts to consider:</Text>
           <Text style={[styles.promptText, { color: theme.textSecondary }]}>
             • What habit felt easiest today?{'\n'}
             • What challenged you?{'\n'}
             • What are you grateful for?{'\n'}
-            • What's one small win from today?{'\n'}
+            • What’s one small win from today?{'\n'}
             • What will you focus on tomorrow?
           </Text>
         </View>
@@ -93,7 +130,11 @@ export default function JournalScreen() {
   );
 }
 
-const baseStyles = {
+/* ------------------------------------------------------------------ */
+/* Styles: only real style objects here (no color token fields)        */
+/* ------------------------------------------------------------------ */
+
+const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
@@ -124,30 +165,4 @@ const baseStyles = {
   },
   saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
   promptText: { fontSize: 14, lineHeight: 24 },
-};
-
-const lightStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  inputBg: '#F8FAFC',
-  border: '#E2E8F0',
-  placeholder: '#94A3B8',
-  primary: '#6366F1',
 });
-
-const darkStyles = StyleSheet.create({
-  ...baseStyles,
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  inputBg: '#0F172A',
-  border: '#334155',
-  placeholder: '#64748B',
-  primary: '#818CF8',
-});
-
-const styles = StyleSheet.create(baseStyles);

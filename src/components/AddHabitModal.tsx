@@ -1,4 +1,3 @@
-// src/components/AddHabitModal.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import ColorPicker, { Panel1, Swatches, HueSlider } from 'reanimated-color-picker';
 import { useApp } from '../store';
+import TimeField from './TimeField';
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -21,7 +21,7 @@ interface AddHabitModalProps {
 export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitModalProps) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366F1');
-  const [reminderTime, setReminderTime] = useState('');
+  const [reminderTime, setReminderTime] = useState(''); // e.g., "07:30 AM"
   const { addHabit } = useApp();
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -40,9 +40,7 @@ export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitMo
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: theme.bg }]}>
           <ScrollView>
-            <Text style={[styles.title, { color: theme.text }]}>
-              Add New Habit
-            </Text>
+            <Text style={[styles.title, { color: theme.text }]}>Add New Habit</Text>
 
             <Text style={[styles.label, { color: theme.text }]}>Habit Name</Text>
             <TextInput
@@ -50,16 +48,13 @@ export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitMo
               onChangeText={setName}
               placeholder="e.g., Drink water, Exercise..."
               placeholderTextColor={theme.placeholder}
-              style={[styles.input, { 
-                backgroundColor: theme.inputBg, 
-                color: theme.text,
-                borderColor: theme.border,
-              }]}
+              style={[
+                styles.input,
+                { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border },
+              ]}
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>
-              Color
-            </Text>
+            <Text style={[styles.label, { color: theme.text }]}>Color</Text>
             <ColorPicker
               value={color}
               onComplete={(colors) => setColor(colors.hex)}
@@ -75,35 +70,25 @@ export default function AddHabitModal({ visible, onClose, darkMode }: AddHabitMo
               />
             </ColorPicker>
 
-            <Text style={[styles.label, { color: theme.text }]}>
-              Reminder Time (Optional)
-            </Text>
-            <TextInput
-              value={reminderTime}
-              onChangeText={setReminderTime}
-              placeholder="HH:MM (e.g., 09:00)"
-              placeholderTextColor={theme.placeholder}
-              style={[styles.input, { 
-                backgroundColor: theme.inputBg, 
-                color: theme.text,
-                borderColor: theme.border,
-              }]}
-            />
+            <Text style={[styles.label, { color: theme.text }]}>Reminder Time (Optional)</Text>
+            {/* Full keyboard + AM/PM toggle */}
+            <TimeField value={reminderTime} onChange={setReminderTime} use12h dark={darkMode} />
 
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={onClose}
-                style={[styles.button, styles.buttonSecondary]}
+                style={[
+                  styles.buttonOutline,
+                  { borderColor: darkMode ? '#94A3B8' : '#64748B' },
+                ]}
               >
-                <Text style={[styles.buttonText, { color: theme.text }]}>
+                <Text style={{ color: darkMode ? '#E2E8F0' : '#0F172A', fontWeight: '600' }}>
                   Cancel
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={handleSave}
-                style={[styles.button, { backgroundColor: color }]}
-              >
-                <Text style={styles.buttonText}>Save Habit</Text>
+
+              <Pressable onPress={handleSave} style={[styles.buttonFilled, { backgroundColor: color }]}>
+                <Text style={styles.buttonFilledText}>Save Habit</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -125,47 +110,26 @@ const styles = StyleSheet.create({
     padding: 24,
     maxHeight: '90%',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  colorPicker: {
-    width: '100%',
-    marginBottom: 12,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
-  button: {
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 12 },
+  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 8 },
+  colorPicker: { width: '100%', marginBottom: 12 },
+  buttonRow: { flexDirection: 'row', marginTop: 24 },
+  buttonOutline: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginRight: 12, // instead of 'gap' for RN compatibility
+  },
+  buttonFilled: {
+    flex: 1,
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
-  buttonSecondary: {
-    backgroundColor: '#E5E7EB',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
+  buttonFilledText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
 });
 
 const lightTheme = {
