@@ -1,7 +1,9 @@
+// src/components/HabitItem.tsx
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Habit } from '../types';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useApp, newId } from '../store';
+import type { Habit } from '../types';
 
 interface HabitItemProps {
   habit: Habit;
@@ -10,23 +12,56 @@ interface HabitItemProps {
 }
 
 export default function HabitItem({ habit, date, darkMode }: HabitItemProps) {
-  const { entries, upsertEntry } = useApp();
+  const router = useRouter();
+  const { entries = [], upsertEntry } = useApp();
+  const { archiveHabit, deleteHabit } = (useApp() as any);
   const theme = darkMode ? darkTheme : lightTheme;
 
-  const entry = entries.find(e => e.date === date && e.habitId === habit.id);
-  const isCompleted = entry?.completed || false;
+  const entry = entries.find((e: any) => e.date === date && e.habitId === habit.id);
+  const isCompleted = !!entry?.completed;
+
+  const afterTogglePrompt = () => {
+    Alert.alert(
+      'Habit Completed',
+      'What would you like to do with this habit?',
+      [
+        { text: 'Keep', style: 'default' },
+        {
+          text: 'Archive',
+          onPress: () => {
+            if (typeof archiveHabit === 'function') archiveHabit(habit.id);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (typeof deleteHabit === 'function') deleteHabit(habit.id);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const toggleCompletion = () => {
+    const willComplete = !isCompleted;
     upsertEntry({
       id: entry?.id || newId(),
       date,
       habitId: habit.id,
-      completed: !isCompleted,
+      completed: willComplete,
     });
+    if (willComplete) afterTogglePrompt();
+  };
+
+  const openEdit = () => {
+    router.push({ pathname: '/edit-habit', params: { id: habit.id } });
   };
 
   return (
-    <Pressable onPress={toggleCompletion} style={styles.container}>
+    <Pressable onPress={toggleCompletion} onLongPress={openEdit} style={styles.container}>
       <View style={[styles.dot, { backgroundColor: habit.color }]} />
       <Text
         style={[
@@ -34,6 +69,7 @@ export default function HabitItem({ habit, date, darkMode }: HabitItemProps) {
           { color: theme.text },
           isCompleted && styles.nameCompleted,
         ]}
+        numberOfLines={1}
       >
         {habit.name}
       </Text>

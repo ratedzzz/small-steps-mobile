@@ -1,5 +1,5 @@
-// src/screens/HomeScreen.tsx
-import React, { useState, useEffect } from 'react';
+/// app/(tabs)/index.tsx
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,66 +7,39 @@ import {
   StyleSheet,
   Pressable,
   useColorScheme,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../store';
-import { getMotivationalQuote } from '../quotes';
-import AddHabitModal from '../components/AddHabitModal';
-import AddGoalModal from '../components/AddGoalModal';
-import HabitItem from '../components/HabitItem';
-import GoalItem from '../components/GoalItem';
+import { Link } from 'expo-router';
 
-type ThemeTokens = {
-  bg: string;
-  cardBg: string;
-  text: string;
-  textSecondary: string;
-  primary: string;
-};
+import { useApp } from '../../src/store';
+import { getMotivationalQuote } from '../../src/quotes';
 
-const LIGHT: ThemeTokens = {
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
-};
-
-const DARK: ThemeTokens = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-};
+import AddHabitModal from '../../src/components/AddHabitModal';
+import AddGoalModal from '../../src/components/AddGoalModal';
+import HabitItem from '../../src/components/HabitItem';
+import GoalItem from '../../src/components/GoalItem';
 
 export default function HomeScreen() {
-  const systemTheme = useColorScheme();
-  const [darkMode, setDarkMode] = useState<boolean>(systemTheme === 'dark');
+  const scheme = useColorScheme();
+  const darkMode = scheme === 'dark';
 
-  // Keep the toggle in sync if the user changes OS theme while app is running
-  useEffect(() => {
-    setDarkMode(systemTheme === 'dark');
-  }, [systemTheme]);
+  // ✅ Keep tokens as plain objects (NOT StyleSheet.create), so values are strings
+  const theme = darkMode ? darkTheme : lightTheme;
 
+  const { habits = [], goals = [], entries = [], pro } = useApp();
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [dailyQuote, setDailyQuote] = useState('');
-
-  const { habits = [], goals = [], entries = [], pro } = useApp();
-  const theme = darkMode ? DARK : LIGHT;
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
   }, []);
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0];
-
-  // Calculate completion for today
-  const todayEntries = (entries || []).filter((e: any) => e?.date === today && e?.habitId);
-  const completedToday = todayEntries.filter((e: any) => e?.completed).length;
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const completedToday = useMemo(() => {
+    const todayEntries = entries.filter((e) => e.date === today && e.habitId);
+    return todayEntries.filter((e) => e.completed).length;
+  }, [entries, today]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -84,22 +57,43 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.themeToggle}>
-            <Text style={[styles.themeLabel, { color: theme.text, marginRight: 8 }]}>Dark</Text>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: '#D1D5DB', true: theme.primary }}
-              thumbColor="#FFFFFF"
-            />
+          {/* Quick links (→ /journal, /badges, /archives) */}
+          <View style={styles.quickLinks}>
+            <Link href="/journal" asChild>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open Journal"
+                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Journal</Text>
+              </Pressable>
+            </Link>
+            <Link href="/badges" asChild>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="View Badges"
+                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Badges</Text>
+              </Pressable>
+            </Link>
+            <Link href="/archives" asChild>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open Archives"
+                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Archives</Text>
+              </Pressable>
+            </Link>
           </View>
         </View>
 
-        {/* Daily Quote Card */}
+        {/* Daily Quote */}
         <View style={[styles.quoteCard, { backgroundColor: theme.cardBg }]}>
           <Text style={styles.quoteIcon}>✨</Text>
           <Text style={[styles.quoteText, { color: theme.text }]}>
-            {dailyQuote ? `"${dailyQuote}"` : '“Small daily improvements lead to stunning results.”'}
+            "{dailyQuote}"
           </Text>
         </View>
 
@@ -111,12 +105,14 @@ export default function HomeScreen() {
               <Text style={[styles.progressNumber, { color: theme.primary }]}>
                 {completedToday}/{habits.length}
               </Text>
-              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>completed</Text>
+              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+                completed
+              </Text>
             </View>
           </View>
         )}
 
-        {/* Habits Section */}
+        {/* Habits */}
         <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Habits</Text>
@@ -135,13 +131,13 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            habits.map((habit: any) => (
+            habits.map((habit) => (
               <HabitItem key={habit.id} habit={habit} date={today} darkMode={darkMode} />
             ))
           )}
         </View>
 
-        {/* Goals Section */}
+        {/* Goals */}
         <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Goals</Text>
@@ -160,26 +156,23 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            goals.map((goal: any) => <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />)
+            goals.map((goal) => <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />)
           )}
         </View>
 
-        {/* Pro Upgrade Banner */}
+        {/* Pro CTA */}
         {!pro && (
-          <Pressable
-            style={[styles.proCard, { backgroundColor: theme.primary }]}
-            onPress={() => {
-              // TODO: navigate to paywall or open modal
-            }}
-          >
-            <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
-            <Text style={styles.proText}>
-              Unlock unlimited habits, advanced analytics, and more!
-            </Text>
-            <View style={styles.proButton}>
-              <Text style={styles.proButtonText}>Learn More</Text>
-            </View>
-          </Pressable>
+          <Link href="/settings" asChild>
+            <Pressable style={[styles.proCard, { backgroundColor: theme.primary }]}>
+              <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
+              <Text style={styles.proText}>
+                Unlock unlimited habits, advanced analytics, and more!
+              </Text>
+              <View style={styles.proButton}>
+                <Text style={styles.proButtonText}>Learn More</Text>
+              </View>
+            </Pressable>
+          </Link>
         )}
       </ScrollView>
 
@@ -198,39 +191,49 @@ export default function HomeScreen() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Styles - keep ONLY real style objects here (no color tokens)        */
-/* ------------------------------------------------------------------ */
+/** Light/Dark tokens kept as plain objects (avoid StyleSheet.create here) */
+const lightTheme = {
+  bg: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  primary: '#6366F1',
+} as const;
 
+const darkTheme = {
+  bg: '#0F172A',
+  cardBg: '#1E293B',
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  primary: '#818CF8',
+} as const;
+
+/** Styles (only real RN style objects in here) */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 100 },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  themeToggle: {
+  title: { fontSize: 32, fontWeight: 'bold' },
+  subtitle: { fontSize: 14, marginTop: 4 },
+
+  quickLinks: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
   },
-  themeLabel: {
-    fontSize: 14,
+  quickLinkBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
   },
+  quickLinkText: { fontWeight: '600', fontSize: 12 },
+
   quoteCard: {
     padding: 20,
     borderRadius: 16,
@@ -242,16 +245,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  quoteIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  quoteText: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
+  quoteIcon: { fontSize: 40, marginBottom: 12 },
+  quoteText: { fontSize: 16, fontStyle: 'italic', textAlign: 'center', lineHeight: 24 },
+
   progressCard: {
     padding: 20,
     borderRadius: 16,
@@ -263,22 +259,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  progressCircle: {
-    alignItems: 'center',
-  },
-  progressNumber: {
-    fontSize: 48,
-    fontWeight: 'bold',
-  },
-  progressLabel: {
-    fontSize: 14,
-    marginTop: 4,
-  },
+  progressTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16 },
+  progressCircle: { alignItems: 'center' },
+  progressNumber: { fontSize: 48, fontWeight: 'bold' },
+  progressLabel: { fontSize: 14, marginTop: 4 },
+
   section: {
     padding: 16,
     borderRadius: 16,
@@ -295,28 +280,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold' },
+
   addButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  emptyState: {
-    paddingVertical: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  addButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+
+  emptyState: { paddingVertical: 32, alignItems: 'center' },
+  emptyText: { fontSize: 14, textAlign: 'center' },
+
   proCard: {
     padding: 24,
     borderRadius: 16,
@@ -327,17 +302,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
   },
-  proTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  proText: {
-    fontSize: 14,
-    color: '#E0E7FF',
-    marginBottom: 16,
-  },
+  proTitle: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 },
+  proText: { fontSize: 14, color: '#E0E7FF', marginBottom: 16 },
   proButton: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 12,
@@ -345,9 +311,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
-  proButtonText: {
-    color: '#6366F1',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  proButtonText: { color: '#6366F1', fontWeight: 'bold', fontSize: 14 },
 });

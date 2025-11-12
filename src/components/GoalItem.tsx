@@ -1,7 +1,9 @@
 // src/components/GoalItem.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Goal } from '../types';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useApp, newId } from '../store';
+import type { Goal } from '../types';
 
 interface Props {
   goal: Goal;
@@ -9,85 +11,94 @@ interface Props {
 }
 
 export default function GoalItem({ goal, darkMode }: Props) {
+  const router = useRouter();
+  const { entries = [], upsertEntry } = useApp();
+  const { archiveGoal, deleteGoal } = (useApp() as any);
   const theme = darkMode ? darkTheme : lightTheme;
-  
-  // Mock progress - in real app, calculate from related habits
-  const progress = Math.floor(Math.random() * 100);
+
+  // Find today's goal progress entry (optional; adapt if you store goals differently)
+  const today = new Date().toISOString().split('T')[0];
+  const entry = entries.find((e: any) => e.date === today && e.goalId === goal.id);
+  const isCompleted = !!entry?.completed;
+
+  const afterTogglePrompt = () => {
+    Alert.alert(
+      'Goal Completed',
+      'What would you like to do with this goal?',
+      [
+        { text: 'Keep', style: 'default' },
+        {
+          text: 'Archive',
+          onPress: () => {
+            if (typeof archiveGoal === 'function') archiveGoal(goal.id);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (typeof deleteGoal === 'function') deleteGoal(goal.id);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const toggleCompletion = () => {
+    const willComplete = !isCompleted;
+    upsertEntry({
+      id: entry?.id || newId(),
+      date: today,
+      goalId: goal.id,
+      completed: willComplete,
+    });
+    if (willComplete) afterTogglePrompt();
+  };
+
+  const openEdit = () => {
+    // Expo Router: navigate to /edit-goal?id=...
+    router.push({ pathname: '/edit-goal', params: { id: goal.id } });
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.dot, { backgroundColor: goal.color }]} />
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>
-          {goal.title}
-        </Text>
-        {goal.dueDate && (
-          <Text style={[styles.dueDate, { color: theme.textSecondary }]}>
-            Due: {new Date(goal.dueDate).toLocaleDateString()}
-          </Text>
-        )}
-        <View style={[styles.progressBar, { backgroundColor: theme.progressBg }]}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${progress}%`, backgroundColor: goal.color },
-            ]}
-          />
-        </View>
-        <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-          {progress}% complete
-        </Text>
+    <Pressable onPress={toggleCompletion} onLongPress={openEdit} style={styles.container}>
+      {/* colored square for goals */}
+      <View style={[styles.square, { backgroundColor: goal.color }]} />
+      <Text
+        style={[
+          styles.name,
+          { color: theme.text },
+          isCompleted && styles.nameCompleted,
+        ]}
+        numberOfLines={1}
+      >
+        {goal.name}
+      </Text>
+      <View
+        style={[
+          styles.checkbox,
+          { borderColor: goal.color },
+          isCompleted && { backgroundColor: goal.color },
+        ]}
+      >
+        {isCompleted && <Text style={styles.checkmark}>✓</Text>}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+  container: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  square: { width: 12, height: 12, borderRadius: 3, marginRight: 12 },
+  name: { flex: 1, fontSize: 16, marginRight: 12 },
+  nameCompleted: { textDecorationLine: 'line-through', opacity: 0.6 },
+  checkbox: {
+    width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  dueDate: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-  },
-  progressText: {
-    fontSize: 12,
-  },
+  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
 });
 
-const lightTheme = {
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  progressBg: '#E5E7EB',
-};
-
-const darkTheme = {
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  progressBg: '#334155',
-};
+const lightTheme = { text: '#0F172A' };
+const darkTheme = { text: '#F1F5F9' };

@@ -1,4 +1,5 @@
-// src/screens/SettingsScreen.tsx
+
+// app/(tabs)/settings.tsx
 import React from 'react';
 import {
   View,
@@ -10,8 +11,8 @@ import {
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../store';
-import { ensureLocalPermission } from '../notifications';
+import { useApp } from '../../src/store';
+import { ensureLocalPermission } from '../../src/notifications';
 
 // Light/Dark color tokens as plain objects (NOT StyleSheet.create)
 const lightTheme = {
@@ -32,7 +33,8 @@ const darkTheme = {
 
 export default function SettingsScreen() {
   const systemTheme = useColorScheme();
-  const theme = systemTheme === 'dark' ? darkTheme : lightTheme;
+  const dark = systemTheme === 'dark';
+  const theme = dark ? darkTheme : lightTheme;
   const { habits, goals, entries, badges, pro, setPro } = useApp();
 
   const requestNotificationPermissions = async () => {
@@ -135,13 +137,23 @@ export default function SettingsScreen() {
 
         {/* Data Management */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
+
           <Text style={[styles.cardTitle, { color: theme.text }]}>Data Management</Text>
+
+          {/* High-contrast Export button (dark gray bg + white text) */}
           <Pressable
             onPress={() => Alert.alert('Export', 'Export feature coming soon!')}
-            style={[styles.button, styles.buttonSecondary]}
+            style={[
+              styles.button,
+              {
+                backgroundColor: dark ? '#334155' : '#1F2937', // darker for contrast
+              },
+            ]}
           >
-            <Text style={[styles.buttonText, { color: theme.text }]}>Export Data</Text>
+            <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Export Data</Text>
           </Pressable>
+
+          {/* Danger action */}
           <Pressable onPress={clearAllData} style={[styles.button, styles.buttonDanger]}>
             <Text style={styles.buttonText}>Clear All Data</Text>
           </Pressable>
@@ -203,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   } as const,
-  buttonSecondary: { backgroundColor: '#E5E7EB' } as const,
+  buttonSecondary: { backgroundColor: '#E5E7EB' } as const, // kept for future use if needed
   buttonDanger: { backgroundColor: '#EF4444' } as const,
   buttonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' } as const,
   helpText: { fontSize: 12, textAlign: 'center', marginTop: 8 } as const,
