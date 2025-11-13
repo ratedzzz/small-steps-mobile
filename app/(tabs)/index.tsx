@@ -1,44 +1,72 @@
 /// app/(tabs)/index.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
+  Text,
   useColorScheme,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useApp } from '../../src/store';
-import { getMotivationalQuote } from '../../src/quotes';
+import { getMotivationalQuote } from "../../src/quotes";
+import { useApp } from "../../src/store";
 
-import AddHabitModal from '../../src/components/AddHabitModal';
-import AddGoalModal from '../../src/components/AddGoalModal';
-import HabitItem from '../../src/components/HabitItem';
-import GoalItem from '../../src/components/GoalItem';
+import AddGoalModal from "../../src/components/AddGoalModal";
+import AddHabitModal from "../../src/components/AddHabitModal";
+import GoalItem from "../../src/components/GoalItem";
+import HabitItem from "../../src/components/HabitItem";
+
+// Palette (same as _layout)
+const PALETTE = {
+  deepTeal: "#15292E",
+  teal: "#074047",
+  aqua: "#1C8585",
+  mint: "#1DA27E",
+  gold: "#E0A800",
+  goldSoft: "#F1C453",
+  goldPale: "#F6D88B",
+} as const;
+
+const LIGHT = {
+  bg: "#FFF9EC",
+  cardBg: "#FFFFFF",
+  text: "#15292E",
+  textSecondary: "#475569",
+  primary: PALETTE.mint,
+  accent: PALETTE.gold,
+} as const;
+
+const DARK = {
+  bg: PALETTE.deepTeal,
+  cardBg: PALETTE.teal,
+  text: "#EAF7F6",
+  textSecondary: "#9FB8B6",
+  primary: PALETTE.mint,
+  accent: PALETTE.goldSoft,
+} as const;
 
 export default function HomeScreen() {
-  const scheme = useColorScheme();
-  const darkMode = scheme === 'dark';
-
-  // ✅ Keep tokens as plain objects (NOT StyleSheet.create), so values are strings
-  const theme = darkMode ? darkTheme : lightTheme;
+  const darkMode = useColorScheme() === "dark";
+  const theme = darkMode ? DARK : LIGHT;
 
   const { habits = [], goals = [], entries = [], pro } = useApp();
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
-  const [dailyQuote, setDailyQuote] = useState('');
+  const [dailyQuote, setDailyQuote] = useState("");
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
   }, []);
 
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const completedToday = useMemo(() => {
-    const todayEntries = entries.filter((e) => e.date === today && e.habitId);
-    return todayEntries.filter((e) => e.completed).length;
+    const todayEntries = entries.filter(
+      (e: any) => e?.date === today && e?.habitId
+    );
+    return todayEntries.filter((e: any) => e?.completed).length;
   }, [entries, today]);
 
   return (
@@ -47,43 +75,54 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.title, { color: theme.primary }]}>Small Steps</Text>
+            <Text style={[styles.title, { color: theme.primary }]}>
+              Small Steps
+            </Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric',
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
               })}
             </Text>
           </View>
 
-          {/* Quick links (→ /journal, /badges, /archives) */}
+          {/* Quick Links – switch tabs directly */}
           <View style={styles.quickLinks}>
-            <Link href="/journal" asChild>
+            <Link href="/(tabs)/calendar" asChild>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Open Journal"
                 style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
               >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Journal</Text>
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
+                  Calendar
+                </Text>
               </Pressable>
             </Link>
-            <Link href="/badges" asChild>
+            <Link href="/(tabs)/journal" asChild>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="View Badges"
                 style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
               >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Badges</Text>
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
+                  Journal
+                </Text>
               </Pressable>
             </Link>
-            <Link href="/archives" asChild>
+            <Link href="/(tabs)/badges" asChild>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Open Archives"
                 style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
               >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>Archives</Text>
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
+                  Badges
+                </Text>
+              </Pressable>
+            </Link>
+            <Link href="/(tabs)/settings" asChild>
+              <Pressable
+                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
+              >
+                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
+                  Settings
+                </Text>
               </Pressable>
             </Link>
           </View>
@@ -99,13 +138,19 @@ export default function HomeScreen() {
 
         {/* Today's Progress */}
         {habits.length > 0 && (
-          <View style={[styles.progressCard, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.progressTitle, { color: theme.text }]}>Today's Progress</Text>
+          <View
+            style={[styles.progressCard, { backgroundColor: theme.cardBg }]}
+          >
+            <Text style={[styles.progressTitle, { color: theme.text }]}>
+              Today's Progress
+            </Text>
             <View style={styles.progressCircle}>
               <Text style={[styles.progressNumber, { color: theme.primary }]}>
                 {completedToday}/{habits.length}
               </Text>
-              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+              <Text
+                style={[styles.progressLabel, { color: theme.textSecondary }]}
+              >
                 completed
               </Text>
             </View>
@@ -115,7 +160,9 @@ export default function HomeScreen() {
         {/* Habits */}
         <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Habits</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Daily Habits
+            </Text>
             <Pressable
               onPress={() => setShowAddHabit(true)}
               style={[styles.addButton, { backgroundColor: theme.primary }]}
@@ -132,7 +179,12 @@ export default function HomeScreen() {
             </View>
           ) : (
             habits.map((habit) => (
-              <HabitItem key={habit.id} habit={habit} date={today} darkMode={darkMode} />
+              <HabitItem
+                key={habit.id}
+                habit={habit}
+                date={today}
+                darkMode={darkMode}
+              />
             ))
           )}
         </View>
@@ -140,7 +192,9 @@ export default function HomeScreen() {
         {/* Goals */}
         <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Goals</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Goals
+            </Text>
             <Pressable
               onPress={() => setShowAddGoal(true)}
               style={[styles.addButton, { backgroundColor: theme.primary }]}
@@ -156,20 +210,26 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            goals.map((goal) => <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />)
+            goals.map((goal) => (
+              <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />
+            ))
           )}
         </View>
 
         {/* Pro CTA */}
         {!pro && (
-          <Link href="/settings" asChild>
-            <Pressable style={[styles.proCard, { backgroundColor: theme.primary }]}>
+          <Link href="/(tabs)/settings" asChild>
+            <Pressable
+              style={[styles.proCard, { backgroundColor: theme.accent }]}
+            >
               <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
               <Text style={styles.proText}>
                 Unlock unlimited habits, advanced analytics, and more!
               </Text>
               <View style={styles.proButton}>
-                <Text style={styles.proButtonText}>Learn More</Text>
+                <Text style={[styles.proButtonText, { color: theme.accent }]}>
+                  Learn More
+                </Text>
               </View>
             </Pressable>
           </Link>
@@ -191,40 +251,24 @@ export default function HomeScreen() {
   );
 }
 
-/** Light/Dark tokens kept as plain objects (avoid StyleSheet.create here) */
-const lightTheme = {
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
-} as const;
-
-const darkTheme = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-} as const;
-
-/** Styles (only real RN style objects in here) */
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
 
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
-  title: { fontSize: 32, fontWeight: 'bold' },
+  title: { fontSize: 32, fontWeight: "bold" },
   subtitle: { fontSize: 14, marginTop: 4 },
 
   quickLinks: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
+    maxWidth: 260,
   },
   quickLinkBtn: {
     paddingHorizontal: 10,
@@ -232,84 +276,94 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  quickLinkText: { fontWeight: '600', fontSize: 12 },
+  quickLinkText: { fontWeight: "600", fontSize: 12 },
 
   quoteCard: {
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   quoteIcon: { fontSize: 40, marginBottom: 12 },
-  quoteText: { fontSize: 16, fontStyle: 'italic', textAlign: 'center', lineHeight: 24 },
+  quoteText: {
+    fontSize: 16,
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 24,
+  },
 
   progressCard: {
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
-  progressTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16 },
-  progressCircle: { alignItems: 'center' },
-  progressNumber: { fontSize: 48, fontWeight: 'bold' },
+  progressTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16 },
+  progressCircle: { alignItems: "center" },
+  progressNumber: { fontSize: 48, fontWeight: "bold" },
   progressLabel: { fontSize: 14, marginTop: 4 },
 
   section: {
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold' },
+  sectionTitle: { fontSize: 20, fontWeight: "bold" },
 
   addButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+  addButtonText: { color: "#FFFFFF", fontWeight: "600", fontSize: 14 },
 
-  emptyState: { paddingVertical: 32, alignItems: 'center' },
-  emptyText: { fontSize: 14, textAlign: 'center' },
+  emptyState: { paddingVertical: 32, alignItems: "center" },
+  emptyText: { fontSize: 14, textAlign: "center" },
 
   proCard: {
     padding: 24,
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 5,
   },
-  proTitle: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 },
-  proText: { fontSize: 14, color: '#E0E7FF', marginBottom: 16 },
+  proTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  proText: { fontSize: 14, color: "#FFF", opacity: 0.85, marginBottom: 16 },
   proButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
-  proButtonText: { color: '#6366F1', fontWeight: 'bold', fontSize: 14 },
+  proButtonText: { fontWeight: "bold", fontSize: 14 },
 });

@@ -50,15 +50,13 @@ export default function JournalScreen() {
   const darkMode = systemTheme === 'dark';
   const theme = darkMode ? DARK : LIGHT;
 
-  // Defensive defaults in case store arrays are undefined
   const { entries = [], upsertEntry } = useApp();
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const [journalText, setJournalText] = useState('');
 
-  // Find today's free-form journal entry (non-habit)
   const todaysJournal = useMemo(
-    () => entries.find((e: any) => e?.date === today && !e?.habitId),
+    () => entries.find((e: any) => e?.date === today && !e?.habitId && !e?.goalId),
     [entries, today]
   );
 
@@ -71,7 +69,6 @@ export default function JournalScreen() {
       id: todaysJournal?.id ?? newId(),
       date: today,
       text: journalText,
-      // keep it a free-form journal (no habitId)
     });
   };
 
@@ -129,10 +126,6 @@ export default function JournalScreen() {
     </SafeAreaView>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* Styles: only real style objects here (no color token fields)        */
-/* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

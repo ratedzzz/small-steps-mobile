@@ -1,101 +1,99 @@
-// src/components/HabitItem.tsx
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useApp, newId } from '../store';
+/// src/components/HabitItem.tsx
+import React, { useMemo } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { Habit } from '../types';
+import { useApp, newId } from '../store';
 
-interface HabitItemProps {
+export default function HabitItem({
+  habit,
+  date,
+  darkMode,
+}: {
   habit: Habit;
-  date: string;
-  darkMode: boolean;
-}
-
-export default function HabitItem({ habit, date, darkMode }: HabitItemProps) {
-  const router = useRouter();
+  date: string;        // e.g. "2025-11-12"
+  darkMode?: boolean;
+}) {
   const { entries = [], upsertEntry } = useApp();
-  const { archiveHabit, deleteHabit } = (useApp() as any);
-  const theme = darkMode ? darkTheme : lightTheme;
 
-  const entry = entries.find((e: any) => e.date === date && e.habitId === habit.id);
-  const isCompleted = !!entry?.completed;
+  const theme = darkMode ? DARK : LIGHT;
 
-  const afterTogglePrompt = () => {
-    Alert.alert(
-      'Habit Completed',
-      'What would you like to do with this habit?',
-      [
-        { text: 'Keep', style: 'default' },
-        {
-          text: 'Archive',
-          onPress: () => {
-            if (typeof archiveHabit === 'function') archiveHabit(habit.id);
-          },
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            if (typeof deleteHabit === 'function') deleteHabit(habit.id);
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-      { cancelable: true }
-    );
-  };
+  // Find today's entry for this habit (if any)
+  const todayEntry = useMemo(
+    () => entries.find((e: any) => e?.date === date && e?.habitId === habit.id),
+    [entries, date, habit.id]
+  );
 
-  const toggleCompletion = () => {
-    const willComplete = !isCompleted;
+  const completed = !!todayEntry?.completed;
+
+  const toggle = () => {
     upsertEntry({
-      id: entry?.id || newId(),
+      id: todayEntry?.id ?? newId(),
       date,
       habitId: habit.id,
-      completed: willComplete,
+      completed: !completed,
     });
-    if (willComplete) afterTogglePrompt();
   };
 
-  const openEdit = () => {
-    router.push({ pathname: '/edit-habit', params: { id: habit.id } });
-  };
+  const label = (habit as any).name ?? (habit as any).title ?? 'Habit';
 
   return (
-    <Pressable onPress={toggleCompletion} onLongPress={openEdit} style={styles.container}>
-      <View style={[styles.dot, { backgroundColor: habit.color }]} />
-      <Text
-        style={[
-          styles.name,
-          { color: theme.text },
-          isCompleted && styles.nameCompleted,
-        ]}
-        numberOfLines={1}
-      >
-        {habit.name}
-      </Text>
-      <View
-        style={[
-          styles.checkbox,
-          { borderColor: habit.color },
-          isCompleted && { backgroundColor: habit.color },
-        ]}
-      >
-        {isCompleted && <Text style={styles.checkmark}>✓</Text>}
+    <View style={[styles.row, { borderColor: theme.border }]}>
+      <Pressable onPress={toggle} style={[styles.checkbox, { borderColor: theme.border }]}>
+        {completed ? <Text style={[styles.check, { color: theme.primary }]}>✓</Text> : null}
+      </Pressable>
+
+      <View style={styles.textWrap}>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+          {label}
+        </Text>
+        {(habit as any).notes ? (
+          <Text style={[styles.sub, { color: theme.textSecondary }]} numberOfLines={1}>
+            {(habit as any).notes}
+          </Text>
+        ) : null}
       </View>
-    </Pressable>
+
+      {/* If you later add an Edit screen, reintroduce a button here that navigates there */}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  name: { flex: 1, fontSize: 16, marginRight: 12 },
-  nameCompleted: { textDecorationLine: 'line-through', opacity: 0.6 },
-  checkbox: {
-    width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center',
-  },
-  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
-});
+/* ------------------------------ Theme ------------------------------ */
 
-const lightTheme = { text: '#0F172A' };
-const darkTheme = { text: '#F1F5F9' };
+const LIGHT = {
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  border: '#E5E7EB',
+  primary: '#6366F1',
+} as const;
+
+const DARK = {
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  border: '#334155',
+  primary: '#818CF8',
+} as const;
+
+/* ------------------------------ Styles ----------------------------- */
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  check: { fontSize: 16, fontWeight: '900' },
+  textWrap: { flex: 1, minWidth: 0 },
+  title: { fontSize: 16, fontWeight: '700' },
+  sub: { fontSize: 12 },
+});
