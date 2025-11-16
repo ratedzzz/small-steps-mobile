@@ -1,5 +1,4 @@
 /// app/(tabs)/index.tsx
-import { Link } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -19,15 +18,13 @@ import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
 
-// Palette (same as _layout)
+// Palette (matches _layout)
 const PALETTE = {
   deepTeal: "#15292E",
   teal: "#074047",
   aqua: "#1C8585",
   mint: "#1DA27E",
-  gold: "#E0A800",
   goldSoft: "#F1C453",
-  goldPale: "#F6D88B",
 } as const;
 
 const LIGHT = {
@@ -36,7 +33,7 @@ const LIGHT = {
   text: "#15292E",
   textSecondary: "#475569",
   primary: PALETTE.mint,
-  accent: PALETTE.gold,
+  accent: PALETTE.goldSoft,
 } as const;
 
 const DARK = {
@@ -72,7 +69,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
+        {/* Header (quick links removed) */}
         <View style={styles.header}>
           <View>
             <Text style={[styles.title, { color: theme.primary }]}>
@@ -85,46 +82,6 @@ export default function HomeScreen() {
                 day: "numeric",
               })}
             </Text>
-          </View>
-
-          {/* Quick Links – switch tabs directly */}
-          <View style={styles.quickLinks}>
-            <Link href="/(tabs)/calendar" asChild>
-              <Pressable
-                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
-              >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
-                  Calendar
-                </Text>
-              </Pressable>
-            </Link>
-            <Link href="/(tabs)/journal" asChild>
-              <Pressable
-                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
-              >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
-                  Journal
-                </Text>
-              </Pressable>
-            </Link>
-            <Link href="/(tabs)/badges" asChild>
-              <Pressable
-                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
-              >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
-                  Badges
-                </Text>
-              </Pressable>
-            </Link>
-            <Link href="/(tabs)/settings" asChild>
-              <Pressable
-                style={[styles.quickLinkBtn, { borderColor: theme.primary }]}
-              >
-                <Text style={[styles.quickLinkText, { color: theme.primary }]}>
-                  Settings
-                </Text>
-              </Pressable>
-            </Link>
           </View>
         </View>
 
@@ -218,21 +175,19 @@ export default function HomeScreen() {
 
         {/* Pro CTA */}
         {!pro && (
-          <Link href="/(tabs)/settings" asChild>
-            <Pressable
-              style={[styles.proCard, { backgroundColor: theme.accent }]}
-            >
-              <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
-              <Text style={styles.proText}>
-                Unlock unlimited habits, advanced analytics, and more!
+          <Pressable
+            style={[styles.proCard, { backgroundColor: theme.accent }]}
+          >
+            <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
+            <Text style={styles.proText}>
+              Unlock unlimited habits, advanced analytics, and more!
+            </Text>
+            <View style={styles.proButton}>
+              <Text style={[styles.proButtonText, { color: theme.accent }]}>
+                Learn More
               </Text>
-              <View style={styles.proButton}>
-                <Text style={[styles.proButtonText, { color: theme.accent }]}>
-                  Learn More
-                </Text>
-              </View>
-            </Pressable>
-          </Link>
+            </View>
+          </Pressable>
         )}
       </ScrollView>
 
@@ -263,20 +218,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 32, fontWeight: "bold" },
   subtitle: { fontSize: 14, marginTop: 4 },
-
-  quickLinks: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    maxWidth: 260,
-  },
-  quickLinkBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  quickLinkText: { fontWeight: "600", fontSize: 12 },
 
   quoteCard: {
     padding: 20,
@@ -357,7 +298,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 8,
   },
-  proText: { fontSize: 14, color: "#FFF", opacity: 0.85, marginBottom: 16 },
+  proText: { fontSize: 14, color: "#FFF", opacity: 0.9, marginBottom: 16 },
   proButton: {
     backgroundColor: "#FFFFFF",
     paddingVertical: 12,
