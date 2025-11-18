@@ -1,5 +1,4 @@
 
-// app/(tabs)/settings.tsx
 import React from 'react';
 import {
   View,
@@ -14,27 +13,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../src/store';
 import { ensureLocalPermission } from '../../src/notifications';
 
-// Light/Dark color tokens as plain objects (NOT StyleSheet.create)
-const lightTheme = {
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
-} as const;
-
-const darkTheme = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-} as const;
+const PALETTE = {
+  tealBg: '#15292E',
+  cardBg: '#074047',
+  textLight: '#EAF7F6',
+  textSecondary: '#9FB8B6',
+  primary: '#1DA27E',
+  gold: '#E0A800',
+  danger: '#EF4444',
+};
 
 export default function SettingsScreen() {
   const systemTheme = useColorScheme();
-  const dark = systemTheme === 'dark';
-  const theme = dark ? darkTheme : lightTheme;
+  const theme = {
+    bg: PALETTE.tealBg,
+    cardBg: PALETTE.cardBg,
+    text: PALETTE.textLight,
+    textSecondary: PALETTE.textSecondary,
+    primary: PALETTE.primary,
+    gold: PALETTE.gold,
+    danger: PALETTE.danger,
+  };
+
   const { habits, goals, entries, badges, pro, setPro } = useApp();
 
   const requestNotificationPermissions = async () => {
@@ -44,7 +44,7 @@ export default function SettingsScreen() {
     } else {
       Alert.alert(
         'Permissions Required',
-        'Please enable notifications in your device settings.'
+        'Please enable notifications in your device settings.',
       );
     }
   };
@@ -73,24 +73,36 @@ export default function SettingsScreen() {
           <Text style={[styles.cardTitle, { color: theme.text }]}>Your Stats</Text>
 
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Habits:</Text>
-            <Text style={[styles.statValue, { color: theme.text }]}>{habits.length}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Total Habits:
+            </Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>
+              {habits.length}
+            </Text>
           </View>
 
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Goals:</Text>
-            <Text style={[styles.statValue, { color: theme.text }]}>{goals.length}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Total Goals:
+            </Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>
+              {goals.length}
+            </Text>
           </View>
 
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Journal Entries:</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Journal Entries:
+            </Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {entries.filter((e) => !e.habitId && e.text).length}
             </Text>
           </View>
 
           <View style={styles.statRow}>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Badges Earned:</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Badges Earned:
+            </Text>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {badges.filter((b) => b.unlockedAt).length}
             </Text>
@@ -115,8 +127,10 @@ export default function SettingsScreen() {
           </View>
           {pro && (
             <Text style={[styles.proFeatures, { color: theme.textSecondary }]}>
-              ✓ Unlimited habits{'\n'}✓ Advanced analytics{'\n'}✓ Custom themes{'\n'}✓ Priority
-              support
+              ✓ Unlimited habits{'\n'}
+              ✓ Advanced analytics{'\n'}
+              ✓ Custom themes{'\n'}
+              ✓ Priority support
             </Text>
           )}
         </View>
@@ -137,24 +151,19 @@ export default function SettingsScreen() {
 
         {/* Data Management */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-
           <Text style={[styles.cardTitle, { color: theme.text }]}>Data Management</Text>
 
-          {/* High-contrast Export button (dark gray bg + white text) */}
           <Pressable
             onPress={() => Alert.alert('Export', 'Export feature coming soon!')}
-            style={[
-              styles.button,
-              {
-                backgroundColor: dark ? '#334155' : '#1F2937', // darker for contrast
-              },
-            ]}
+            style={[styles.button, { backgroundColor: '#1F2937' }]}
           >
             <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Export Data</Text>
           </Pressable>
 
-          {/* Danger action */}
-          <Pressable onPress={clearAllData} style={[styles.button, styles.buttonDanger]}>
+          <Pressable
+            onPress={clearAllData}
+            style={[styles.button, { backgroundColor: theme.danger }]}
+          >
             <Text style={styles.buttonText}>Clear All Data</Text>
           </Pressable>
         </View>
@@ -164,8 +173,8 @@ export default function SettingsScreen() {
           <Text style={[styles.cardTitle, { color: theme.text }]}>About</Text>
           <Text style={[styles.aboutText, { color: theme.textSecondary }]}>
             Small Steps v1.0.0{'\n\n'}
-            Building better habits, one small step at a time.{'\n\n'}© 2025 Small Steps. All rights
-            reserved.
+            Building better habits, one small step at a time.{'\n\n'}
+            © 2025 Small Steps. All rights reserved.
           </Text>
         </View>
       </ScrollView>
@@ -174,12 +183,12 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 } as const,
-  scrollContent: { padding: 16, paddingBottom: 100 } as const,
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 20 } as const,
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 100 },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 20 },
 
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
@@ -187,37 +196,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-  } as const,
+  },
 
-  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 } as const,
+  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
 
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
-  } as const,
-  statLabel: { fontSize: 14 } as const,
-  statValue: { fontSize: 14, fontWeight: '600' } as const,
+  },
+  statLabel: { fontSize: 14 },
+  statValue: { fontSize: 14, fontWeight: '600' },
 
   subscriptionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  } as const,
-  subscriptionText: { fontSize: 16, fontWeight: '600' } as const,
-  upgradeButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 } as const,
-  upgradeButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 } as const,
-  proFeatures: { fontSize: 12, marginTop: 12, lineHeight: 20 } as const,
+  },
+  subscriptionText: { fontSize: 16, fontWeight: '600' },
+  upgradeButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  upgradeButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  proFeatures: { fontSize: 12, marginTop: 12, lineHeight: 20 },
 
   button: {
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 8,
-  } as const,
-  buttonSecondary: { backgroundColor: '#E5E7EB' } as const, // kept for future use if needed
-  buttonDanger: { backgroundColor: '#EF4444' } as const,
-  buttonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' } as const,
-  helpText: { fontSize: 12, textAlign: 'center', marginTop: 8 } as const,
-  aboutText: { fontSize: 14, lineHeight: 22 } as const,
+  },
+  buttonText: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
+  helpText: { fontSize: 12, textAlign: 'center', marginTop: 8 },
+  aboutText: { fontSize: 14, lineHeight: 22 },
 });

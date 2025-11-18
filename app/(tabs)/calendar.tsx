@@ -1,168 +1,196 @@
 
 // app/(tabs)/calendar.tsx
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, DateData } from 'react-native-calendars';
+import { Calendar } from 'react-native-calendars';
+import type { DateData } from 'react-native-calendars';
+
 import { useApp } from '../../src/store';
+import type { JournalEntry } from '../../src/types';
 
-// Some versions don’t export DateObject — keep a local fallback
-type DateObject = {
-  dateString: string;
-  day: number;
-  month: number;
-  year: number;
-  timestamp: number;
-};
-
-// Looser entry shape used just in this screen
-type EntryLike = {
-  id?: string;
-  date?: string;
-  text?: string;
-  completed?: boolean;
-  habitId?: string;
-  goalId?: string; // <- optional here
-};
-
-const LIGHT = {
-  bg: '#F8FAFC',
+// Shared light/dark palette (matches new look)
+const lightTheme = {
+  bg: '#F5F7FB',
   cardBg: '#FFFFFF',
   text: '#0F172A',
-  textSecondary: '#64748B',
-  primary: '#6366F1',
-} as const;
+  textSecondary: '#6B7280',
+  accent: '#1DA27E', // teal
+};
 
-const DARK = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  primary: '#818CF8',
-} as const;
+const darkTheme = {
+  bg: '#050B18',          // deep navy
+  cardBg: '#0F2233',      // lighter navy/teal card
+  text: '#E5E7EB',
+  textSecondary: '#9CA3AF',
+  accent: '#1DA27E',      // teal
+};
 
-export default function CalendarScreen() {
+export default function CalendarTab() {
   const scheme = useColorScheme();
-  const dark = scheme === 'dark';
-  const theme = dark ? DARK : LIGHT;
+  const theme = scheme === 'dark' ? darkTheme : lightTheme;
 
-  const { entries = [], habits = [], goals = [] } = useApp();
-  const entriesLoose = entries as EntryLike[];
+  const { entries = [] } = useApp();
 
-  const [selected, setSelected] = useState<string>(() =>
-    new Date().toISOString().split('T')[0]
+  const today = useMemo(
+    () => new Date().toISOString().split('T')[0],
+    []
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+
+  // Entries for the currently selected date
+  const entriesForDay = useMemo(
+    () =>
+      (entries as JournalEntry[]).filter(
+        (e) => e.date === selectedDate && !(e as any).archived
+      ),
+    [entries, selectedDate]
   );
 
+  // Mark any dates that have at least one entry
   const markedDates = useMemo(() => {
     const marks: Record<string, any> = {};
-    for (const e of entriesLoose) {
-      if (!e?.date) continue;
-      marks[e.date] = {
-        ...marks[e.date],
-        marked: true,
-        dotColor: theme.primary,
-      };
+
+    (entries as JournalEntry[]).forEach((e) => {
+      if (!e.date) return;
+      if (!marks[e.date]) {
+        marks[e.date] = {
+          marked: true,
+          dots: [{ color: theme.accent }],
+        };
+      }
+    });
+
+    // Highlight the selected day
+    if (!marks[selectedDate]) {
+      marks[selectedDate] = {};
     }
-    if (selected) {
-      marks[selected] = { ...(marks[selected] || {}), selected: true, selectedColor: theme.primary };
-    }
+    marks[selectedDate] = {
+      ...(marks[selectedDate] || {}),
+      selected: true,
+      selectedColor: theme.accent,
+      selectedTextColor: scheme === 'dark' ? '#020617' : '#FFFFFF',
+    };
+
     return marks;
-  }, [entriesLoose, selected, theme.primary]);
+  }, [entries, selectedDate, theme.accent, scheme]);
 
-  const itemsForSelected = useMemo(
-    () => entriesLoose.filter((e) => e?.date === selected),
-    [entriesLoose, selected]
-  );
+const handleDayPress = (day: DateData) => {
+  setSelectedDate(day.dateString);
+};
 
-  const nameForHabit = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const h of habits) m.set(h.id, (h as any).name ?? (h as any).title ?? 'Habit');
-    return m;
-  }, [habits]);
-
-  const nameForGoal = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const g of goals) m.set(g.id, (g as any).name ?? (g as any).title ?? 'Goal');
-    return m;
-  }, [goals]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-        <Calendar
-          onDayPress={(d: DateData) => setSelected(d.dateString)}
-          markedDates={markedDates}
-          theme={{
-            calendarBackground: theme.cardBg,
-            dayTextColor: theme.text,
-            monthTextColor: theme.text,
-            textDisabledColor: theme.textSecondary,
-            arrowColor: theme.primary,
-            todayTextColor: theme.primary,
-          }}
-        />
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Calendar card */}
+        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
+          <Calendar
+            onDayPress={handleDayPress}
+            markedDates={markedDates}
+            theme={{
+              backgroundColor: theme.cardBg,
+              calendarBackground: theme.cardBg,
+              monthTextColor: theme.text,
+              dayTextColor: theme.text,
+              todayTextColor: theme.accent,
+              arrowColor: theme.accent,
+              textDisabledColor: '#6B7280',
+              selectedDayBackgroundColor: theme.accent,
+              selectedDayTextColor: scheme === 'dark' ? '#020617' : '#FFFFFF',
+            }}
+            firstDay={0}
+          />
+        </View>
 
-      <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-        <Text style={[styles.heading, { color: theme.text }]}>
-          {new Date(selected).toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
-        </Text>
+        {/* Entries for selected day */}
+        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
+          <Text style={[styles.dayTitle, { color: theme.text }]}>
+            {new Date(selectedDate).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </Text>
 
-        {itemsForSelected.length === 0 ? (
-          <Text style={{ color: theme.textSecondary }}>No entries.</Text>
-        ) : (
-          itemsForSelected.map((e, i) => {
-            const title =
-              e.habitId
-                ? `Habit • ${nameForHabit.get(e.habitId) ?? e.habitId}`
-                : e.goalId
-                ? `Goal • ${nameForGoal.get(e.goalId) ?? e.goalId}`
-                : 'Journal';
-
-            const detail =
-              typeof e.text === 'string' && e.text.trim()
-                ? e.text.trim()
-                : e.completed !== undefined
-                ? e.completed ? 'Completed' : 'Not completed'
-                : '';
-
-            return (
-              <View key={e.id ?? i} style={styles.row}>
-                <Text style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>
-                  {title}
-                </Text>
-                {!!detail && (
-                  <Text style={{ color: theme.textSecondary }} numberOfLines={2}>
-                    {detail}
+          {entriesForDay.length === 0 ? (
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No entries.
+            </Text>
+          ) : (
+            entriesForDay.map((entry) => (
+              <View key={entry.id} style={styles.entryRow}>
+                <View style={[styles.dot, { backgroundColor: theme.accent }]} />
+                <View style={styles.entryTextContainer}>
+                  <Text style={[styles.entryTitle, { color: theme.text }]}>
+                    {(entry as any).title || 'Journal Entry'}
                   </Text>
-                )}
+                  {!!entry.text && (
+                    <Text
+                      style={[styles.entryBody, { color: theme.textSecondary }]}
+                      numberOfLines={2}
+                    >
+                      {entry.text}
+                    </Text>
+                  )}
+                </View>
               </View>
-            );
-          })
-        )}
-      </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  card: {
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+  container: {
+    flex: 1,
   },
-  heading: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  row: { marginBottom: 8 },
-  rowTitle: { fontSize: 14, fontWeight: '700' },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+    gap: 16,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  dayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+  },
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+    marginRight: 10,
+  },
+  entryTextContainer: {
+    flex: 1,
+  },
+  entryTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  entryBody: {
+    fontSize: 13,
+  },
 });

@@ -1,151 +1,86 @@
-// src/screens/BadgesScreen.tsx
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useApp } from '../store';
 import { Badge } from '../types';
 
+const PALETTE = {
+  tealBg: '#15292E',
+  cardBg: '#074047',
+  textLight: '#EAF7F6',
+  accent: '#1DA27E',
+  gold: '#E0A800'
+};
+
 export default function BadgesScreen() {
-  const { badges } = useApp();
+  const { badges = [] } = useApp();
 
   const unlockedBadges: Badge[] = badges.filter(b => !!b.unlockedAt);
-  const lockedBadges:   Badge[] = badges.filter(b => !b.unlockedAt);
-
-  // simple palette (NOT part of StyleSheet.create)
-  const palette = {
-    bg: '#0a0a0a',
-    cardBg: '#1a1a1a',
-    text: '#ffffff',
-    textSecondary: '#c7c7c7',
-    border: '#333333',
-    primary: '#6ee7b7',
-  } as const;
+  const lockedBadges: Badge[] = badges.filter(b => !b.unlockedAt);
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Badges</Text>
-
-        {/* Stats card */}
-        <View style={[styles.statsCard, { backgroundColor: palette.cardBg }]}>
-          <View style={[styles.statBox, { borderColor: palette.border }]}>
-            <Text style={[styles.statNumber, { color: palette.primary }]}>
-              {unlockedBadges.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>
-              Earned
-            </Text>
+    <ScrollView style={{ flex: 1, backgroundColor: PALETTE.tealBg }} contentContainerStyle={styles.scrollContent}>
+      <View style={[styles.card, { backgroundColor: PALETTE.cardBg }]}>
+        <Text style={styles.sectionTitle}>Badges</Text>
+        <View style={styles.statsCard}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{unlockedBadges.length}</Text>
+            <Text style={styles.statLabel}>Earned</Text>
           </View>
-          <View style={[styles.statBox, { borderColor: palette.border }]}>
-            <Text style={[styles.statNumber, { color: palette.text }]}>
-              {lockedBadges.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: palette.textSecondary }]}>
-              Locked
-            </Text>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{lockedBadges.length}</Text>
+            <Text style={styles.statLabel}>Locked</Text>
           </View>
         </View>
+      </View>
 
-        {/* Unlocked */}
-        {unlockedBadges.length > 0 && (
-          <>
-            <Text style={[styles.subtitle, { color: palette.text }]}>Earned Badges</Text>
-            {unlockedBadges.map((badge: Badge) => (
-              <View
-                key={badge.id}
-                style={[
-                  styles.badgeItem,
-                  {
-                    backgroundColor: palette.cardBg,
-                    borderColor: palette.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.badgeTitle, { color: palette.text }]}>
-                  {badge.title ?? badge.name}
-                </Text>
-                <Text style={[styles.badgeDesc, { color: palette.textSecondary }]}>
-                  {badge.description}
-                </Text>
-                {badge.unlockedAt && (
-                  <Text style={[styles.badgeMeta, { color: palette.textSecondary }]}>
-                    Unlocked: {new Date(badge.unlockedAt).toLocaleDateString()}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </>
-        )}
+      {!!unlockedBadges.length && (
+        <View style={[styles.card, { backgroundColor: PALETTE.cardBg }]}>
+          <Text style={styles.listTitle}>Earned Badges</Text>
+          {unlockedBadges.map((badge: Badge) => (
+            <View key={badge.id} style={styles.badgeBox}>
+              <Text style={styles.badgeName}>{badge.title ?? badge.name}</Text>
+              <Text style={styles.badgeDesc}>{badge.description}</Text>
+              <Text style={styles.badgeUnlocked}>Unlocked: {badge.unlockedAt && new Date(badge.unlockedAt).toLocaleDateString()}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
-        {/* Locked */}
-        {lockedBadges.length > 0 && (
-          <>
-            <Text style={[styles.subtitle, { color: palette.text }]}>Locked Badges</Text>
-            {lockedBadges.map((badge: Badge) => (
-              <View
-                key={badge.id}
-                style={[
-                  styles.badgeItem,
-                  {
-                    backgroundColor: palette.cardBg,
-                    borderColor: palette.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.badgeTitle, { color: palette.text }]}>
-                  {badge.title ?? badge.name}
-                </Text>
-                <Text style={[styles.badgeDesc, { color: palette.textSecondary }]}>
-                  {badge.description}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-      </ScrollView>
-    </View>
+      {!!lockedBadges.length && (
+        <View style={[styles.card, { backgroundColor: PALETTE.cardBg }]}>
+          <Text style={styles.listTitle}>Locked Badges</Text>
+          {lockedBadges.map((badge: Badge) => (
+            <View key={badge.id} style={styles.badgeBox}>
+              <Text style={styles.badgeName}>{badge.title ?? badge.name}</Text>
+              <Text style={styles.badgeDesc}>{badge.description}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 } as const,
-  scrollContent: { padding: 16, paddingBottom: 32 } as const,
-
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 } as const,
-  subtitle: { fontSize: 18, marginTop: 16, marginBottom: 8 } as const,
-
-  statsCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderRadius: 12,
-    padding: 12,
+  scrollContent: { padding: 16, paddingBottom: 100 },
+  card: {
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 2,
-  } as const,
-
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    padding: 12,
-    marginHorizontal: 4,
-  } as const,
-
-  statNumber: { fontSize: 22, fontWeight: '700' } as const,
-  statLabel: { fontSize: 12, marginTop: 2 } as const,
-
-  badgeItem: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  } as const,
-
-  badgeTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 } as const,
-  badgeDesc: { fontSize: 14 } as const,
-  badgeMeta: { fontSize: 12, marginTop: 4 } as const,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  sectionTitle: { fontSize: 30, fontWeight: 'bold', color: PALETTE.textLight, marginBottom: 8 },
+  statsCard: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
+  statBox: { alignItems: 'center', flex: 1 },
+  statNumber: { fontSize: 28, fontWeight: 'bold', color: PALETTE.accent, marginBottom: 4 },
+  statLabel: { fontSize: 15, color: PALETTE.textLight },
+  listTitle: { fontSize: 21, fontWeight: 'bold', color: PALETTE.gold, marginBottom: 10 },
+  badgeBox: { marginBottom: 14, padding: 10, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.07)' },
+  badgeName: { fontSize: 16, fontWeight: 'bold', color: PALETTE.textLight },
+  badgeDesc: { fontSize: 14, color: PALETTE.textLight, marginBottom: 2 },
+  badgeUnlocked: { fontSize: 13, color: PALETTE.textLight }
 });
