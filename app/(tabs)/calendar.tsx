@@ -1,5 +1,4 @@
 
-// app/(tabs)/calendar.tsx
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,45 +8,36 @@ import type { DateData } from 'react-native-calendars';
 import { useApp } from '../../src/store';
 import type { JournalEntry } from '../../src/types';
 
-// Shared light/dark palette (matches new look)
-const lightTheme = {
-  bg: '#F5F7FB',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#6B7280',
-  accent: '#1DA27E', // teal
-};
-
-const darkTheme = {
-  bg: '#050B18',          // deep navy
-  cardBg: '#0F2233',      // lighter navy/teal card
-  text: '#E5E7EB',
-  textSecondary: '#9CA3AF',
-  accent: '#1DA27E',      // teal
+const PALETTE = {
+  tealBg: '#15292E',
+  cardBg: '#074047',
+  textLight: '#EAF7F6',
+  textSecondary: '#9FB8B6',
+  accent: '#1DA27E',
 };
 
 export default function CalendarTab() {
   const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? darkTheme : lightTheme;
+  const theme = {
+    bg: PALETTE.tealBg,
+    cardBg: PALETTE.cardBg,
+    text: PALETTE.textLight,
+    textSecondary: PALETTE.textSecondary,
+    accent: PALETTE.accent,
+  };
 
   const { entries = [] } = useApp();
 
-  const today = useMemo(
-    () => new Date().toISOString().split('T')[0],
-    []
-  );
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
-  // Entries for the currently selected date
+  // Entries for the currently selected date that are not archived
   const entriesForDay = useMemo(
-    () =>
-      (entries as JournalEntry[]).filter(
-        (e) => e.date === selectedDate && !(e as any).archived
-      ),
+    () => (entries as JournalEntry[]).filter((e) => e.date === selectedDate && !(e as any).archived),
     [entries, selectedDate]
   );
 
-  // Mark any dates that have at least one entry
+  // Mark dates with entries
   const markedDates = useMemo(() => {
     const marks: Record<string, any> = {};
 
@@ -62,9 +52,6 @@ export default function CalendarTab() {
     });
 
     // Highlight the selected day
-    if (!marks[selectedDate]) {
-      marks[selectedDate] = {};
-    }
     marks[selectedDate] = {
       ...(marks[selectedDate] || {}),
       selected: true,
@@ -75,10 +62,9 @@ export default function CalendarTab() {
     return marks;
   }, [entries, selectedDate, theme.accent, scheme]);
 
-const handleDayPress = (day: DateData) => {
-  setSelectedDate(day.dateString);
-};
-
+  const handleDayPress = (day: DateData) => {
+    setSelectedDate(day.dateString);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -115,9 +101,7 @@ const handleDayPress = (day: DateData) => {
           </Text>
 
           {entriesForDay.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No entries.
-            </Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No entries.</Text>
           ) : (
             entriesForDay.map((entry) => (
               <View key={entry.id} style={styles.entryRow}>
@@ -127,10 +111,7 @@ const handleDayPress = (day: DateData) => {
                     {(entry as any).title || 'Journal Entry'}
                   </Text>
                   {!!entry.text && (
-                    <Text
-                      style={[styles.entryBody, { color: theme.textSecondary }]}
-                      numberOfLines={2}
-                    >
+                    <Text style={[styles.entryBody, { color: theme.textSecondary }]} numberOfLines={2}>
                       {entry.text}
                     </Text>
                   )}
@@ -145,14 +126,8 @@ const handleDayPress = (day: DateData) => {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-    gap: 16,
-  },
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 100, gap: 16 },
   card: {
     borderRadius: 24,
     padding: 16,

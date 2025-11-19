@@ -5,11 +5,13 @@ export type ID = string;
 /** A daily, color-coded habit the user can track. */
 export type Habit = {
   id: ID;
-  name: string;
+  title: string;           // Changed from name to title for consistency with usage
   color: string;
   /** "HH:MM" (24h) if the user set a reminder */
   reminderTime?: string;
   archived?: boolean;
+  /** ISO date string yyyy-mm-dd when last marked done */
+  doneDate?: string;
 };
 
 /** A larger objective; may be related to one or more habits. */
@@ -41,7 +43,7 @@ export type JournalEntry = {
  *
  * Notes:
  * - `title` is the preferred display field.
- * - `name` is kept optional for backward compatibility with any older code that used `name`.
+ * - `name` is kept optional for backward compatibility with older code.
  * - `unlockedAt` is optional; treat falsy (undefined or null) as "locked".
  */
 export type Badge = {

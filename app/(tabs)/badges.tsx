@@ -10,7 +10,7 @@ import BadgesScreen from '../../src/screens/BadgesScreen';
 const lightTheme = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',
-  text: '#0F172A',
+  textLight: '#0F172A',
   textSecondary: '#64748B',
   primary: '#0F766E',
 } as const;
@@ -18,7 +18,7 @@ const lightTheme = {
 const darkTheme = {
   bg: '#020617',
   cardBg: '#0F172A',
-  text: '#E5E7EB',
+  textLight: '#E5E7EB',
   textSecondary: '#9CA3AF',
   primary: '#14B8A6',
 } as const;

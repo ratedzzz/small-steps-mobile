@@ -24,7 +24,7 @@ export default function ArchivesScreen() {
   // Maps for habit and goal display names
   const habitName = useMemo(() => {
     const m = new Map();
-    for (const h of habits) m.set(h.id, h.name ?? 'Habit');
+    for (const h of habits) m.set(h.id, h.title ?? 'Habit');
     return m;
   }, [habits]);
 

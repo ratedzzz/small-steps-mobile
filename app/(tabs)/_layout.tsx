@@ -27,7 +27,7 @@ const PALETTE = {
 const LIGHT = {
   bg: '#FFF9EC',
   cardBg: '#FFFFFF',
-  text: '#15292E',
+  textLight: '#15292E',
   textSecondary: '#475569',
   primary: PALETTE.mint,
   accent: PALETTE.goldSoft,
@@ -37,7 +37,7 @@ const LIGHT = {
 const DARK = {
   bg: PALETTE.deepTeal,
   cardBg: PALETTE.teal,
-  text: '#EAF7F6',
+  textLight: '#EAF7F6',
   textSecondary: '#9FB8B6',
   primary: PALETTE.mint,
   accent: PALETTE.goldSoft,
@@ -123,9 +123,10 @@ export default function RootLayout() {
         const t = parseTimeString(habit.reminderTime);
         if (!t) continue;
         await scheduleDailyLocalNotification(t.hour, t.minute, {
-          title: 'Small Steps Reminder 🌟',
-          body: `Time for: ${habit.name}`,
+        title: 'Small Steps Reminder 🌟',
+        body: `Time for: ${habit.title}`,
         });
+
       }
     })();
   }, [habits]);

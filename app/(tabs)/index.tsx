@@ -1,4 +1,3 @@
-/// app/(tabs)/index.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -65,6 +64,19 @@ export default function HomeScreen() {
     );
     return todayEntries.filter((e: any) => e?.completed).length;
   }, [entries, today]);
+
+  // Stub handler for toggling done status of habit
+  const handleToggleDone = (habitId: string, doneForDay: boolean) => {
+    // Implement logic to update habit done state for the day
+    // Could update entries or habit data as per your design
+    console.log(`Toggle habit ${habitId} done: ${doneForDay}`);
+  };
+
+  // Stub handler for editing a habit
+  const handleEditHabit = (habit: any) => {
+    // Open edit modal or navigate to edit screen
+    console.log("Edit habit", habit);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -141,6 +153,8 @@ export default function HomeScreen() {
                 habit={habit}
                 date={today}
                 darkMode={darkMode}
+                onToggleDone={handleToggleDone}
+                onEdit={handleEditHabit}
               />
             ))
           )}

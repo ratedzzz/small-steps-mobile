@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Habit, Goal, JournalEntry, Badge, ID } from './types';
 import { evalBadges } from './badges';
 
-
 export const newId = () => Math.random().toString(36).slice(2, 10);
 
 export type State = {
@@ -22,18 +21,49 @@ export type State = {
 export const useApp = create<State>()(
   persist(
     (set, get) => ({
-      habits: [], goals: [], entries: [], badges: [], pro: false,
+      habits: [],
+      goals: [],
+      entries: [],
+      badges: [],
+      pro: false,
       setPro: (v) => set({ pro: v }),
-      addHabit: (h) => set((s) => ({ habits: [...s.habits, { id: newId(), name: h.name ?? 'New habit', color: h.color ?? '#6fb3ff', reminderTime: h.reminderTime }] })),
-      addGoal: (g) => set((s) => ({ goals: [...s.goals, { id: newId(), title: g.title ?? 'New goal', color: g.color ?? '#9ad67d', dueDate: g.dueDate }] })),
-      upsertEntry: (e) => set((s) => {
-        const i = s.entries.findIndex(x => x.date === e.date && x.habitId === e.habitId && (!e.text || x.text === e.text));
-        let entries = [...s.entries];
+      addHabit: (h) =>
+        set((s) => ({
+          habits: [
+            ...s.habits,
+            {
+              id: newId(),
+              title: h.title ?? 'New habit', // changed name to title here
+              color: h.color ?? '#6fb3ff',
+              reminderTime: h.reminderTime,
+              doneDate: h.doneDate,
+              archived: h.archived,
+            },
+          ],
+        })),
+      addGoal: (g) =>
+        set((s) => ({
+          goals: [
+            ...s.goals,
+            {
+              id: newId(),
+              title: g.title ?? 'New goal',
+              color: g.color ?? '#9ad67d',
+              dueDate: g.dueDate,
+              archived: g.archived,
+            },
+          ],
+        })),
+      upsertEntry: (e) => {
+        const i = get().entries.findIndex(
+          (x) => x.date === e.date && x.habitId === e.habitId && (!e.text || x.text === e.text)
+        );
+        let entries = [...get().entries];
         if (i >= 0) entries[i] = { ...entries[i], ...e };
         else entries = [...entries, e];
-        const badges = evalBadges(entries, s.badges);
-        return { entries, badges };
-      }),
+        const badges = evalBadges(entries, get().badges);
+        set({ entries, badges });
+      },
     }),
     { name: 'small-steps', storage: createJSONStorage(() => AsyncStorage) }
   )
