@@ -25,7 +25,7 @@ type Habit = {
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSave: (habit: Habit) => void;
+  onSave: (habit: Partial<Habit>) => void;
   onDelete: (habitId: string) => void;
   habit?: Habit | null; // Habit to edit; null means adding new
   darkMode?: boolean;

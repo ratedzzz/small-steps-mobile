@@ -92,7 +92,7 @@ export default function HomeScreen() {
     setShowAddHabit(false);
   };
 
-  const handleSaveHabit = (habit: Habit) => {
+  const handleSaveHabit = (habit: Partial<Habit>) => {
     if (habit.id) {
       updateHabit(habit.id, habit);
     } else {
