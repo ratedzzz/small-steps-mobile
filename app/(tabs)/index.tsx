@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getMotivationalQuote } from "../../src/quotes";
 import { useApp } from "../../src/store";
+import { Habit } from "../../src/types";
 
 import AddGoalModal from "../../src/components/AddGoalModal";
 import AddHabitModal from "../../src/components/AddHabitModal";
@@ -48,10 +49,21 @@ export default function HomeScreen() {
   const darkMode = useColorScheme() === "dark";
   const theme = darkMode ? DARK : LIGHT;
 
-  const { habits = [], goals = [], entries = [], pro } = useApp();
+  const {
+    habits = [],
+    goals = [],
+    entries = [],
+    pro,
+    updateHabit,
+    deleteHabit,
+  } = useApp();
+
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [dailyQuote, setDailyQuote] = useState("");
+
+  // Track which habit is currently being edited; null means adding new
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
@@ -65,23 +77,39 @@ export default function HomeScreen() {
     return todayEntries.filter((e: any) => e?.completed).length;
   }, [entries, today]);
 
-  // Stub handler for toggling done status of habit
   const handleToggleDone = (habitId: string, doneForDay: boolean) => {
-    // Implement logic to update habit done state for the day
-    // Could update entries or habit data as per your design
-    console.log(`Toggle habit ${habitId} done: ${doneForDay}`);
+    const newDoneDate = doneForDay ? today : undefined;
+    updateHabit(habitId, { doneDate: newDoneDate });
   };
 
-  // Stub handler for editing a habit
-  const handleEditHabit = (habit: any) => {
-    // Open edit modal or navigate to edit screen
-    console.log("Edit habit", habit);
+  const handleEditHabit = (habit: Habit) => {
+    setSelectedHabit(habit);
+    setShowAddHabit(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedHabit(null);
+    setShowAddHabit(false);
+  };
+
+  const handleSaveHabit = (habit: Habit) => {
+    if (habit.id) {
+      updateHabit(habit.id, habit);
+    } else {
+      // Add habit logic (not included here, you can extend as needed)
+    }
+    handleCloseModal();
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    deleteHabit(habitId);
+    handleCloseModal();
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header (quick links removed) */}
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={[styles.title, { color: theme.primary }]}>
@@ -133,7 +161,10 @@ export default function HomeScreen() {
               Daily Habits
             </Text>
             <Pressable
-              onPress={() => setShowAddHabit(true)}
+              onPress={() => {
+                setSelectedHabit(null); // Adding new habit
+                setShowAddHabit(true);
+              }}
               style={[styles.addButton, { backgroundColor: theme.primary }]}
             >
               <Text style={styles.addButtonText}>+ Add</Text>
@@ -208,8 +239,11 @@ export default function HomeScreen() {
       {/* Modals */}
       <AddHabitModal
         visible={showAddHabit}
-        onClose={() => setShowAddHabit(false)}
+        onClose={handleCloseModal}
         darkMode={darkMode}
+        habit={selectedHabit}
+        onSave={handleSaveHabit}
+        onDelete={handleDeleteHabit}
       />
       <AddGoalModal
         visible={showAddGoal}
@@ -221,8 +255,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
 
   header: {
     flexDirection: "row",
@@ -230,8 +269,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  title: { fontSize: 32, fontWeight: "bold" },
-  subtitle: { fontSize: 14, marginTop: 4 },
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
 
   quoteCard: {
     padding: 20,
@@ -244,7 +289,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  quoteIcon: { fontSize: 40, marginBottom: 12 },
+  quoteIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
   quoteText: {
     fontSize: 16,
     fontStyle: "italic",
@@ -263,10 +311,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  progressTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16 },
-  progressCircle: { alignItems: "center" },
-  progressNumber: { fontSize: 48, fontWeight: "bold" },
-  progressLabel: { fontSize: 14, marginTop: 4 },
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 16,
+  },
+  progressCircle: {
+    alignItems: "center",
+  },
+  progressNumber: {
+    fontSize: 48,
+    fontWeight: "bold",
+  },
+  progressLabel: {
+    fontSize: 14,
+    marginTop: 4,
+  },
 
   section: {
     padding: 16,
@@ -284,17 +344,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  sectionTitle: { fontSize: 20, fontWeight: "bold" },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
 
   addButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addButtonText: { color: "#FFFFFF", fontWeight: "600", fontSize: 14 },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
 
-  emptyState: { paddingVertical: 32, alignItems: "center" },
-  emptyText: { fontSize: 14, textAlign: "center" },
+  emptyState: {
+    paddingVertical: 32,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
 
   proCard: {
     padding: 24,
@@ -312,7 +385,12 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 8,
   },
-  proText: { fontSize: 14, color: "#FFF", opacity: 0.9, marginBottom: 16 },
+  proText: {
+    fontSize: 14,
+    color: "#FFF",
+    opacity: 0.9,
+    marginBottom: 16,
+  },
   proButton: {
     backgroundColor: "#FFFFFF",
     paddingVertical: 12,
@@ -320,5 +398,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: "flex-start",
   },
-  proButtonText: { fontWeight: "bold", fontSize: 14 },
+  proButtonText: {
+    fontWeight: "bold",
+    fontSize: 14,
+  },
 });

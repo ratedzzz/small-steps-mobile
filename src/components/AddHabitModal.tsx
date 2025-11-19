@@ -1,5 +1,4 @@
-// src/components/AddHabitModal.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -9,13 +8,26 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, newId } from '../store';
 
+type Habit = {
+  id?: string;
+  title?: string;
+  notes?: string;
+  color?: string;
+  reminderTime?: string;
+  createdAt?: string;
+};
+
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onSave: (habit: Habit) => void;
+  onDelete: (habitId: string) => void;
+  habit?: Habit | null; // Habit to edit; null means adding new
   darkMode?: boolean;
 };
 
@@ -37,60 +49,74 @@ const DARK = {
   primary: '#818CF8',
 } as const;
 
-// Safe palette (contrast checked) — no libraries, no crashes.
 const PALETTE = [
   '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6',
   '#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#84cc16',
   '#22c55e', '#14b8a6', '#0ea5e9', '#a855f7', '#e11d48',
 ];
 
-export default function AddHabitModal({ visible, onClose, darkMode }: Props) {
+export default function AddHabitModal({ visible, onClose, onSave, onDelete, habit, darkMode }: Props) {
   const theme = darkMode ? DARK : LIGHT;
-  const { /* other store stuff as needed */ } = useApp();
-  // We don’t know your exact add/upsert function name, so call flexibly:
-  const appAny = useApp() as any;
-  const addHabitFn: ((h: any) => void) | undefined =
-    appAny.addHabit ?? appAny.upsertHabit ?? appAny.insertHabit;
 
-  const [name, setName] = useState('');
+  // Form state
+  const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
-  const defaultColor = PALETTE[5]; // '#6366f1' / '#818CF8' family
+  const defaultColor = PALETTE[5]; // default purple
   const [color, setColor] = useState<string>(defaultColor);
 
-  const canSave = useMemo(() => name.trim().length > 0 && !!addHabitFn, [name, addHabitFn]);
+  // Effect to initialize form when habit prop changes (editing)
+  useEffect(() => {
+    if (habit) {
+      setTitle(habit.title ?? '');
+      setNotes(habit.notes ?? '');
+      setColor(habit.color ?? defaultColor);
+    } else {
+      // Reset form for adding new
+      setTitle('');
+      setNotes('');
+      setColor(defaultColor);
+    }
+  }, [habit]);
+
+  const canSave = useMemo(() => title.trim().length > 0, [title]);
 
   const resetAndClose = () => {
-    setName('');
+    setTitle('');
     setNotes('');
     setColor(defaultColor);
-    onClose?.();
+    onClose();
   };
 
-  const onSave = () => {
+  const handleSave = () => {
     if (!canSave) return;
 
-    // normalize color safely (avoid calling .toLowerCase() on undefined)
-    const safeColor =
-      typeof color === 'string' && color.startsWith('#')
-        ? color.toLowerCase()
-        : defaultColor;
+    const safeColor = color.startsWith('#') ? color.toLowerCase() : defaultColor;
 
-    const record = {
-      id: newId(),
-      name: name.trim(),
+    const record: Habit = {
+      id: habit?.id ?? newId(),
+      title: title.trim(),
       notes: notes.trim() || undefined,
       color: safeColor,
-      createdAt: new Date().toISOString(),
-      // add any other fields your store expects (reminderTime, etc.)
+      createdAt: habit?.createdAt ?? new Date().toISOString(),
     };
 
-    try {
-      addHabitFn?.(record);
-      resetAndClose();
-    } catch (e) {
-      // If your store throws, at least don’t crash the app UI
-      console.warn('[AddHabitModal] addHabit failed:', e);
-    }
+    onSave(record);
+    resetAndClose();
+  };
+
+  const confirmDelete = () => {
+    if (!habit?.id) return;
+    Alert.alert(
+      'Delete Habit',
+      'Are you sure you want to delete this habit? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => {
+          onDelete(habit.id!);
+          resetAndClose();
+        } }
+      ]
+    );
   };
 
   return (
@@ -98,39 +124,30 @@ export default function AddHabitModal({ visible, onClose, darkMode }: Props) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.backdrop}>
           <SafeAreaView style={[styles.sheet, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.title, { color: theme.text }]}>Add Habit</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{habit ? "Edit Habit" : "Add Habit"}</Text>
 
-            {/* Name */}
             <Text style={[styles.label, { color: theme.textSecondary }]}>Name</Text>
             <TextInput
-              value={name}
-              onChangeText={setName}
+              value={title}
+              onChangeText={setTitle}
               placeholder="e.g. Drink water"
               placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' },
-              ]}
+              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' }]}
               autoCapitalize="sentences"
               returnKeyType="done"
             />
 
-            {/* Notes (optional) */}
             <Text style={[styles.label, { color: theme.textSecondary }]}>Notes (optional)</Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
               placeholder="Short description or reminder"
               placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' },
-              ]}
+              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' }]}
               autoCapitalize="sentences"
               returnKeyType="done"
             />
 
-            {/* Color */}
             <Text style={[styles.label, { color: theme.textSecondary }]}>Pick a color</Text>
             <View style={styles.paletteWrap}>
               {PALETTE.map((c) => {
@@ -139,10 +156,7 @@ export default function AddHabitModal({ visible, onClose, darkMode }: Props) {
                   <Pressable
                     key={c}
                     onPress={() => setColor(c)}
-                    style={[
-                      styles.swatch,
-                      { backgroundColor: c, borderColor: selected ? theme.text : 'transparent' },
-                    ]}
+                    style={[styles.swatch, { backgroundColor: c, borderColor: selected ? theme.text : 'transparent' }]}
                     accessibilityRole="button"
                     accessibilityLabel={`Pick color ${c}`}
                   >
@@ -152,18 +166,19 @@ export default function AddHabitModal({ visible, onClose, darkMode }: Props) {
               })}
             </View>
 
-            {/* Actions */}
             <View style={styles.actions}>
               <Pressable style={[styles.btn, { borderColor: theme.border }]} onPress={resetAndClose}>
                 <Text style={[styles.btnText, { color: theme.textSecondary }]}>Cancel</Text>
               </Pressable>
+              {habit && habit.id && (
+                <Pressable style={[styles.btnDelete]} onPress={confirmDelete}>
+                  <Text style={[styles.btnDeleteText]}>Delete</Text>
+                </Pressable>
+              )}
               <Pressable
-                onPress={onSave}
+                onPress={handleSave}
                 disabled={!canSave}
-                style={[
-                  styles.btnPrimary,
-                  { backgroundColor: canSave ? theme.primary : '#A5B4FC' },
-                ]}
+                style={[styles.btnPrimary, { backgroundColor: canSave ? theme.primary : '#A5B4FC' }]}
               >
                 <Text style={styles.btnPrimaryText}>Save</Text>
               </Pressable>
@@ -220,6 +235,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 8,
+    alignItems: 'center',
   },
   btn: {
     flex: 1,
@@ -236,4 +252,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnPrimaryText: { color: '#fff', fontWeight: '800' },
+  btnDelete: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+  },
+  btnDeleteText: {
+    color: '#fff',
+    fontWeight: '800',
+  },
 });
