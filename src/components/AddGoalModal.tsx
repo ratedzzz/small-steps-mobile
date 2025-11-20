@@ -1,20 +1,16 @@
 // src/components/AddGoalModal.tsx
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
-  View,
-} from "react-native";
-import ColorPicker, {
-  HueSlider,
-  Panel1,
-  Swatches,
-} from "reanimated-color-picker";
-import { useApp } from "../store";
+  Modal,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+} from 'react-native';
+import ColorPicker, { Swatches } from 'reanimated-color-picker';
+import { useApp } from '../store';
 
 interface AddGoalModalProps {
   visible: boolean;
@@ -22,23 +18,53 @@ interface AddGoalModalProps {
   darkMode: boolean;
 }
 
-export default function AddGoalModal({
-  visible,
-  onClose,
-  darkMode,
-}: AddGoalModalProps) {
-  const [title, setTitle] = useState("");
-  const [color, setColor] = useState("#10B981");
-  const [dueDate, setDueDate] = useState("");
+const PALETTE = {
+  deepTeal: '#15292E',
+  teal: '#074047',
+  aqua: '#1C8585',
+  mint: '#1DA27E',
+  goldSoft: '#F1C453',
+};
+
+const lightTheme = {
+  bg: '#FFF9EC',
+  text: '#15292E',
+  inputBg: '#FFFFFF',
+  border: '#E2E8F0',
+  placeholder: '#94A3B8',
+  primary: PALETTE.goldSoft,
+  cancelBg: PALETTE.teal,
+  cancelText: '#FFFFFF',
+};
+
+const darkTheme = {
+  bg: PALETTE.teal,
+  text: '#EAF7F6',
+  inputBg: PALETTE.deepTeal,
+  border: PALETTE.aqua,
+  placeholder: '#9FB8B6',
+  primary: PALETTE.goldSoft,
+  cancelBg: PALETTE.deepTeal,
+  cancelText: '#EAF7F6',
+};
+
+export default function AddGoalModal({ visible, onClose, darkMode }: AddGoalModalProps) {
+  const [title, setTitle] = useState('');
+  const [color, setColor] = useState('#F1C453');
+  const [dueDate, setDueDate] = useState('');
   const { addGoal } = useApp();
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleSave = () => {
     if (title.trim()) {
-      addGoal({ title, color, dueDate: dueDate || undefined });
-      setTitle("");
-      setColor("#10B981");
-      setDueDate("");
+      addGoal({ 
+        title: title.trim(), 
+        color, 
+        dueDate: dueDate.trim() || undefined 
+      });
+      setTitle('');
+      setColor('#F1C453');
+      setDueDate('');
       onClose();
     }
   };
@@ -52,42 +78,31 @@ export default function AddGoalModal({
               Add New Goal
             </Text>
 
-            <Text style={[styles.label, { color: theme.text }]}>
-              Goal Title
-            </Text>
+            <Text style={[styles.label, { color: theme.text }]}>Goal Title</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="e.g., Lose 10 lbs, Read 12 books..."
               placeholderTextColor={theme.placeholder}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
+              style={[styles.input, { 
+                backgroundColor: theme.inputBg, 
+                color: theme.text,
+                borderColor: theme.border,
+              }]}
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>Color</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              Color
+            </Text>
             <ColorPicker
               value={color}
               onComplete={(colors) => setColor(colors.hex)}
               style={styles.colorPicker}
             >
-              <Panel1 />
-              <HueSlider />
               <Swatches
                 colors={[
-                  "#EF4444",
-                  "#F59E0B",
-                  "#10B981",
-                  "#3B82F6",
-                  "#8B5CF6",
-                  "#EC4899",
-                  "#06B6D4",
-                  "#84CC16",
+                  '#F1C453', '#F59E0B', '#1DA27E', '#1C8585',
+                  '#074047', '#15292E', '#EF4444', '#8B5CF6',
                 ]}
               />
             </ColorPicker>
@@ -100,30 +115,27 @@ export default function AddGoalModal({
               onChangeText={setDueDate}
               placeholder="YYYY-MM-DD (e.g., 2025-12-31)"
               placeholderTextColor={theme.placeholder}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
+              style={[styles.input, { 
+                backgroundColor: theme.inputBg, 
+                color: theme.text,
+                borderColor: theme.border,
+              }]}
             />
 
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={onClose}
-                style={[styles.button, styles.buttonSecondary]}
+                style={[styles.button, { backgroundColor: theme.cancelBg }]}
               >
-                <Text style={[styles.buttonText, { color: theme.text }]}>
+                <Text style={[styles.buttonText, { color: theme.cancelText }]}>
                   Cancel
                 </Text>
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                style={[styles.button, { backgroundColor: color }]}
+                style={[styles.button, { backgroundColor: theme.primary }]}
               >
-                <Text style={styles.buttonText}>Save Goal</Text>
+                <Text style={[styles.buttonText, { color: '#15292E' }]}>Save Goal</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -136,23 +148,23 @@ export default function AddGoalModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   container: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: "90%",
+    maxHeight: '90%',
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 8,
     marginTop: 12,
   },
@@ -164,11 +176,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   colorPicker: {
-    width: "100%",
+    width: '100%',
     marginBottom: 12,
   },
   buttonRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
     marginTop: 24,
   },
@@ -176,30 +188,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    alignItems: "center",
-  },
-  buttonSecondary: {
-    backgroundColor: "#E5E7EB",
+    alignItems: 'center',
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFFFFF",
+    fontWeight: 'bold',
   },
 });
-
-const lightTheme = {
-  bg: "#FFFFFF",
-  text: "#0F172A",
-  inputBg: "#F8FAFC",
-  border: "#E2E8F0",
-  placeholder: "#94A3B8",
-};
-
-const darkTheme = {
-  bg: "#1E293B",
-  text: "#F1F5F9",
-  inputBg: "#0F172A",
-  border: "#334155",
-  placeholder: "#64748B",
-};

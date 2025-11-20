@@ -1,60 +1,34 @@
-// src/types.ts
-
 export type ID = string;
 
-/** A daily, color-coded habit the user can track. */
 export type Habit = {
   id: ID;
-  title: string;           // Changed from name to title for consistency with usage
+  name: string;
   color: string;
-  /** "HH:MM" (24h) if the user set a reminder */
-  reminderTime?: string;
+  reminderTime?: string; // "07:30" in 24-hour format
   archived?: boolean;
-  /** ISO date string yyyy-mm-dd when last marked done */
-  doneDate?: string;
+  doneDate?: string; // YYYY-MM-DD - tracks when habit was last completed
 };
 
-/** A larger objective; may be related to one or more habits. */
 export type Goal = {
   id: ID;
   title: string;
   color: string;
-  /** YYYY-MM-DD */
-  dueDate?: string;
-  /** Link to habits that support this goal */
+  dueDate?: string;      // YYYY-MM-DD
   relatedHabitIds?: ID[];
   archived?: boolean;
 };
 
-/** Freeform journaling or habit-specific notes for a date. */
 export type JournalEntry = {
   id: ID;
-  /** YYYY-MM-DD */
-  date: string;
-  /** undefined => a general day note (not tied to a habit) */
-  habitId?: ID;
+  date: string;          // YYYY-MM-DD
+  habitId?: ID;          // undefined => general day note
   text?: string;
-  /** convenience flag if you’re marking a habit as completed via journal */
   completed?: boolean;
 };
 
-/**
- * Achievement badges.
- *
- * Notes:
- * - `title` is the preferred display field.
- * - `name` is kept optional for backward compatibility with older code.
- * - `unlockedAt` is optional; treat falsy (undefined or null) as "locked".
- */
 export type Badge = {
   id: ID;
-  /** Preferred display field */
-  title: string;
-  /** Legacy/compat: some code may still read `name` */
-  name?: string;
+  name: string;
   description: string;
-  /** Optional emoji or asset key */
-  icon?: string;
-  /** ISO string when unlocked; falsy means locked */
-  unlockedAt?: string | null;
+  unlockedAt?: string;
 };

@@ -124,7 +124,7 @@ export default function RootLayout() {
         if (!t) continue;
         await scheduleDailyLocalNotification(t.hour, t.minute, {
         title: 'Small Steps Reminder 🌟',
-        body: `Time for: ${habit.title}`,
+        body: `Time for: ${habit.name}`,
         });
 
       }

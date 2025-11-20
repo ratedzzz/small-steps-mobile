@@ -1,96 +1,100 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { ColorDot } from "./ColorDot";
-import { Habit } from "../types";
+// src/components/HabitItem.tsx
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Habit } from '../types';
 
 interface HabitItemProps {
   habit: Habit;
+  date: string;
+  darkMode: boolean;
   onToggleDone: (habitId: string, doneForDay: boolean) => void;
   onEdit: (habit: Habit) => void;
-  date?: string;
-  darkMode?: boolean;
 }
 
+export default function HabitItem({ 
+  habit, 
+  date, 
+  darkMode, 
+  onToggleDone, 
+  onEdit 
+}: HabitItemProps) {
+  // Check if habit is completed today
+  const isCompleted = habit.doneDate === date;
 
-const HabitItem: React.FC<HabitItemProps> = ({ habit, onToggleDone, onEdit }) => {
-  const [isDone, setIsDone] = useState(false);
-
-  // Utility to get string yyyy-mm-dd for today's date
-  const getTodayString = () => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
+  const handleToggle = () => {
+    onToggleDone(habit.id, !isCompleted);
   };
 
-  // On load, determine if the habit is done for today based on habit.doneDate string
-  useEffect(() => {
-    if (habit.doneDate === getTodayString()) {
-      setIsDone(true);
-    } else {
-      setIsDone(false);
-    }
-  }, [habit.doneDate]);
-
-  // Handler for toggling done state
-  const toggleDone = () => {
-    const newDoneState = !isDone;
-    setIsDone(newDoneState);
-    onToggleDone(habit.id, newDoneState);
+  const handleEdit = () => {
+    onEdit(habit);
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={() => onEdit(habit)}>
-      <View style={styles.left}>
-        <ColorDot color={habit.color} />
-        <Text style={styles.text}>{habit.title}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.checkBox, isDone && styles.checkedBox]}
-        onPress={toggleDone}
-        activeOpacity={0.7}
+    <Pressable
+      onPress={handleToggle}
+      onLongPress={handleEdit}
+      style={[
+        styles.container,
+        { backgroundColor: darkMode ? '#074047' : '#1DA27E' }
+      ]}
+    >
+      <View style={[styles.dot, { backgroundColor: habit.color }]} />
+      <Text
+        style={[
+          styles.name,
+          isCompleted && styles.nameCompleted,
+        ]}
       >
-        {isDone && <Text style={styles.checkmark}>✓</Text>}
-      </TouchableOpacity>
-    </TouchableOpacity>
+        {habit.name}
+      </Text>
+      <View
+        style={[
+          styles.checkbox,
+          { borderColor: '#FFFFFF' },
+          isCompleted && { backgroundColor: '#FFFFFF' },
+        ]}
+      >
+        {isCompleted && <Text style={[styles.checkmark, { color: darkMode ? '#074047' : '#1DA27E' }]}>✓</Text>}
+      </View>
+    </Pressable>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    paddingHorizontal: 12,
+    marginVertical: 4,
+    borderRadius: 8,
+    gap: 12,
   },
-  left: {
-    flexDirection: "row",
-    alignItems: "center",
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
-  text: {
+  name: {
+    flex: 1,
     fontSize: 16,
-    marginLeft: 12,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
-  checkBox: {
+  nameCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.6,
+  },
+  checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 4,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#ccc",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkedBox: {
-    backgroundColor: "#4caf50",
-    borderColor: "#4caf50",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkmark: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
-
-export default HabitItem;

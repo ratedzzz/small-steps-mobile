@@ -1,266 +1,359 @@
-import React, { useEffect, useMemo, useState } from 'react';
+// src/components/AddHabitModal.tsx
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   TextInput,
-  Pressable,
+  Modal,
   StyleSheet,
-  TouchableWithoutFeedback,
-  Keyboard,
+  ScrollView,
+  Pressable,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp, newId } from '../store';
+import ColorPicker, { Swatches } from 'reanimated-color-picker';
+import { useApp } from '../store';
+import { Habit } from '../types';
 
-type Habit = {
-  id?: string;
-  title?: string;
-  notes?: string;
-  color?: string;
-  reminderTime?: string;
-  createdAt?: string;
-};
-
-type Props = {
+interface AddHabitModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (habit: Partial<Habit>) => void;
-  onDelete: (habitId: string) => void;
-  habit?: Habit | null; // Habit to edit; null means adding new
-  darkMode?: boolean;
+  darkMode: boolean;
+  habit?: Habit | null;
+  onSave?: (habit: Partial<Habit>) => void;
+  onDelete?: (habitId: string) => void;
+}
+
+const PALETTE = {
+  deepTeal: '#15292E',
+  teal: '#074047',
+  aqua: '#1C8585',
+  mint: '#1DA27E',
+  goldSoft: '#F1C453',
 };
 
-const LIGHT = {
-  bg: '#F8FAFC',
-  cardBg: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  border: '#E5E7EB',
-  primary: '#6366F1',
-} as const;
+const lightTheme = {
+  bg: '#FFF9EC',
+  text: '#15292E',
+  inputBg: '#FFFFFF',
+  border: '#E2E8F0',
+  placeholder: '#94A3B8',
+  primary: PALETTE.mint,
+  cancelBg: PALETTE.teal,
+  cancelText: '#FFFFFF',
+  deleteBg: '#EF4444',
+};
 
-const DARK = {
-  bg: '#0F172A',
-  cardBg: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  border: '#334155',
-  primary: '#818CF8',
-} as const;
+const darkTheme = {
+  bg: PALETTE.teal,
+  text: '#EAF7F6',
+  inputBg: PALETTE.deepTeal,
+  border: PALETTE.aqua,
+  placeholder: '#9FB8B6',
+  primary: PALETTE.mint,
+  cancelBg: PALETTE.deepTeal,
+  cancelText: '#EAF7F6',
+  deleteBg: '#EF4444',
+};
 
-const PALETTE = [
-  '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6',
-  '#6366f1', '#8b5cf6', '#ec4899', '#f97316', '#84cc16',
-  '#22c55e', '#14b8a6', '#0ea5e9', '#a855f7', '#e11d48',
-];
+export default function AddHabitModal({ 
+  visible, 
+  onClose, 
+  darkMode, 
+  habit,
+  onSave,
+  onDelete,
+}: AddHabitModalProps) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#1DA27E');
+  const [reminderTime, setReminderTime] = useState('');
+  const [amPm, setAmPm] = useState<'AM' | 'PM'>('AM');
+  const { addHabit } = useApp();
+  const theme = darkMode ? darkTheme : lightTheme;
 
-export default function AddHabitModal({ visible, onClose, onSave, onDelete, habit, darkMode }: Props) {
-  const theme = darkMode ? DARK : LIGHT;
+  const isEditing = habit !== null && habit !== undefined;
 
-  // Form state
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const defaultColor = PALETTE[5]; // default purple
-  const [color, setColor] = useState<string>(defaultColor);
-
-  // Effect to initialize form when habit prop changes (editing)
+  // Populate fields when editing
   useEffect(() => {
     if (habit) {
-      setTitle(habit.title ?? '');
-      setNotes(habit.notes ?? '');
-      setColor(habit.color ?? defaultColor);
+      setName(habit.name);
+      setColor(habit.color);
+      if (habit.reminderTime) {
+        const [hours, minutes] = habit.reminderTime.split(':').map(Number);
+        const isPM = hours >= 12;
+        const displayHours = hours % 12 || 12;
+        setReminderTime(`${displayHours}:${minutes.toString().padStart(2, '0')}`);
+        setAmPm(isPM ? 'PM' : 'AM');
+      } else {
+        setReminderTime('');
+        setAmPm('AM');
+      }
     } else {
-      // Reset form for adding new
-      setTitle('');
-      setNotes('');
-      setColor(defaultColor);
+      // Reset for new habit
+      setName('');
+      setColor('#1DA27E');
+      setReminderTime('');
+      setAmPm('AM');
     }
-  }, [habit]);
+  }, [habit, visible]);
 
-  const canSave = useMemo(() => title.trim().length > 0, [title]);
-
-  const resetAndClose = () => {
-    setTitle('');
-    setNotes('');
-    setColor(defaultColor);
-    onClose();
+  const convertTo24Hour = (time: string, period: 'AM' | 'PM'): string => {
+    if (!time) return '';
+    
+    const [hoursStr, minutesStr] = time.split(':');
+    let hours = parseInt(hoursStr, 10);
+    const minutes = minutesStr || '00';
+    
+    if (isNaN(hours)) return '';
+    
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
   };
 
   const handleSave = () => {
-    if (!canSave) return;
-
-    const safeColor = color.startsWith('#') ? color.toLowerCase() : defaultColor;
-
-    const record: Habit = {
-      id: habit?.id ?? newId(),
-      title: title.trim(),
-      notes: notes.trim() || undefined,
-      color: safeColor,
-      createdAt: habit?.createdAt ?? new Date().toISOString(),
-    };
-
-    onSave(record);
-    resetAndClose();
+    if (name.trim()) {
+      const time24 = reminderTime ? convertTo24Hour(reminderTime, amPm) : undefined;
+      
+      if (isEditing && onSave) {
+        // Update existing habit
+        onSave({
+          id: habit.id,
+          name: name.trim(),
+          color,
+          reminderTime: time24,
+        });
+      } else {
+        // Add new habit
+        addHabit({ name: name.trim(), color, reminderTime: time24 });
+        onClose();
+      }
+    }
   };
 
-  const confirmDelete = () => {
-    if (!habit?.id) return;
-    Alert.alert(
-      'Delete Habit',
-      'Are you sure you want to delete this habit? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {
-          onDelete(habit.id!);
-          resetAndClose();
-        } }
-      ]
-    );
+  const handleDelete = () => {
+    if (isEditing && onDelete) {
+      Alert.alert(
+        'Delete Habit',
+        `Are you sure you want to delete "${habit.name}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => onDelete(habit.id),
+          },
+        ]
+      );
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.backdrop}>
-          <SafeAreaView style={[styles.sheet, { backgroundColor: theme.cardBg }]}>
-            <Text style={[styles.title, { color: theme.text }]}>{habit ? "Edit Habit" : "Add Habit"}</Text>
+      <View style={styles.overlay}>
+        <View style={[styles.container, { backgroundColor: theme.bg }]}>
+          <ScrollView>
+            <Text style={[styles.title, { color: theme.text }]}>
+              {isEditing ? 'Edit Habit' : 'Add New Habit'}
+            </Text>
 
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Name</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Habit Name</Text>
             <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="e.g. Drink water"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' }]}
-              autoCapitalize="sentences"
-              returnKeyType="done"
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g., Drink water, Exercise..."
+              placeholderTextColor={theme.placeholder}
+              style={[styles.input, { 
+                backgroundColor: theme.inputBg, 
+                color: theme.text,
+                borderColor: theme.border,
+              }]}
             />
 
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Notes (optional)</Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Short description or reminder"
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: darkMode ? theme.bg : '#fff' }]}
-              autoCapitalize="sentences"
-              returnKeyType="done"
-            />
+            <Text style={[styles.label, { color: theme.text }]}>
+              Color
+            </Text>
+            <ColorPicker
+              value={color}
+              onComplete={(colors) => setColor(colors.hex)}
+              style={styles.colorPicker}
+            >
+              <Swatches
+                colors={[
+                  '#1DA27E', '#1C8585', '#074047', '#15292E',
+                  '#F1C453', '#F59E0B', '#EF4444', '#8B5CF6',
+                ]}
+              />
+            </ColorPicker>
 
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Pick a color</Text>
-            <View style={styles.paletteWrap}>
-              {PALETTE.map((c) => {
-                const selected = color === c;
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => setColor(c)}
-                    style={[styles.swatch, { backgroundColor: c, borderColor: selected ? theme.text : 'transparent' }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Pick color ${c}`}
-                  >
-                    {selected ? <Text style={styles.swatchCheck}>✓</Text> : null}
-                  </Pressable>
-                );
-              })}
+            <Text style={[styles.label, { color: theme.text }]}>
+              Reminder Time (Optional)
+            </Text>
+            <View style={styles.timeRow}>
+              <TextInput
+                value={reminderTime}
+                onChangeText={setReminderTime}
+                placeholder="HH:MM (e.g., 09:00)"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="default"
+                style={[styles.timeInput, {
+                  backgroundColor: theme.inputBg,
+                  color: theme.text,
+                  borderColor: theme.border,
+                }]}
+              />
+              <View style={styles.amPmContainer}>
+                <Pressable
+                  onPress={() => setAmPm('AM')}
+                  style={[
+                    styles.amPmButton,
+                    amPm === 'AM' && { backgroundColor: theme.primary },
+                    amPm !== 'AM' && { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1 },
+                  ]}
+                >
+                  <Text style={[
+                    styles.amPmText,
+                    amPm === 'AM' ? { color: '#FFFFFF' } : { color: theme.text },
+                  ]}>
+                    AM
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setAmPm('PM')}
+                  style={[
+                    styles.amPmButton,
+                    amPm === 'PM' && { backgroundColor: theme.primary },
+                    amPm !== 'PM' && { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1 },
+                  ]}
+                >
+                  <Text style={[
+                    styles.amPmText,
+                    amPm === 'PM' ? { color: '#FFFFFF' } : { color: theme.text },
+                  ]}>
+                    PM
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
-            <View style={styles.actions}>
-              <Pressable style={[styles.btn, { borderColor: theme.border }]} onPress={resetAndClose}>
-                <Text style={[styles.btnText, { color: theme.textSecondary }]}>Cancel</Text>
+            <View style={styles.buttonRow}>
+              <Pressable
+                onPress={onClose}
+                style={[styles.button, { backgroundColor: theme.cancelBg }]}
+              >
+                <Text style={[styles.buttonText, { color: theme.cancelText }]}>
+                  Cancel
+                </Text>
               </Pressable>
-              {habit && habit.id && (
-                <Pressable style={[styles.btnDelete]} onPress={confirmDelete}>
-                  <Text style={[styles.btnDeleteText]}>Delete</Text>
-                </Pressable>
-              )}
               <Pressable
                 onPress={handleSave}
-                disabled={!canSave}
-                style={[styles.btnPrimary, { backgroundColor: canSave ? theme.primary : '#A5B4FC' }]}
+                style={[styles.button, { backgroundColor: theme.primary }]}
               >
-                <Text style={styles.btnPrimaryText}>Save</Text>
+                <Text style={styles.buttonText}>
+                  {isEditing ? 'Update' : 'Save Habit'}
+                </Text>
               </Pressable>
             </View>
-          </SafeAreaView>
+
+            {isEditing && (
+              <Pressable
+                onPress={handleDelete}
+                style={[styles.deleteButton, { backgroundColor: theme.deleteBg }]}
+              >
+                <Text style={styles.buttonText}>Delete Habit</Text>
+              </Pressable>
+            )}
+          </ScrollView>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
+  container: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '90%',
   },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  label: { fontSize: 12, marginTop: 8, marginBottom: 6 },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 12,
+  },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  timeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
   },
-  paletteWrap: {
+  amPmContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 6,
+    gap: 8,
+  },
+  amPmButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  amPmText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  colorPicker: {
+    width: '100%',
     marginBottom: 12,
   },
-  swatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swatchCheck: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 16,
-    lineHeight: 18,
-  },
-  actions: {
+  buttonRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
-    alignItems: 'center',
+    gap: 12,
+    marginTop: 24,
   },
-  btn: {
+  button: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  btnText: { fontWeight: '700' },
-  btnPrimary: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-  btnPrimaryText: { color: '#fff', fontWeight: '800' },
-  btnDelete: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+  deleteButton: {
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#ef4444',
-  },
-  btnDeleteText: {
-    color: '#fff',
-    fontWeight: '800',
+    marginTop: 12,
   },
 });

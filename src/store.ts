@@ -11,12 +11,15 @@ export type State = {
   goals: Goal[];
   entries: JournalEntry[];
   badges: Badge[];
-  pro: boolean; // subscription stub
+  pro: boolean;
   addHabit: (h: Partial<Habit>) => void;
-  updateHabit: (id: string, data: Partial<Habit>) => void;
-  deleteHabit: (id: string) => void;
+  updateHabit: (id: ID, updates: Partial<Habit>) => void;
   addGoal: (g: Partial<Goal>) => void;
   upsertEntry: (e: JournalEntry) => void;
+  archiveHabit: (id: ID) => void;
+  archiveGoal: (id: ID) => void;
+  deleteHabit: (id: ID) => void;
+  deleteGoal: (id: ID) => void;
   setPro: (v: boolean) => void;
 };
 
@@ -28,62 +31,97 @@ export const useApp = create<State>()(
       entries: [],
       badges: [],
       pro: false,
+      
       setPro: (v) => set({ pro: v }),
-
-      addHabit: (h) =>
-        set((s) => ({
-          habits: [
-            ...s.habits,
-            {
-              id: newId(),
-              title: h.title ?? 'New habit',
-              color: h.color ?? '#6fb3ff',
-              reminderTime: h.reminderTime,
-              doneDate: h.doneDate,
-              archived: h.archived,
-            },
-          ],
-        })),
-
-      // Update existing habit
-      updateHabit: (id, data) => {
-        set((s) => ({
-          habits: s.habits.map(h => h.id === id ? { ...h, ...data } : h)
+      
+      addHabit: (h) => {
+        const id = newId();
+        const newHabit: Habit = {
+          id,
+          name: h.name?.trim() || 'New habit',
+          color: h.color || '#1DA27E',
+          reminderTime: h.reminderTime,
+          archived: false,
+        };
+        
+        set((state) => ({
+          habits: [...state.habits, newHabit]
         }));
       },
-
-      // Delete habit by ID
-      deleteHabit: (id) => {
-        set((s) => ({
-          habits: s.habits.filter(h => h.id !== id),
+      
+      updateHabit: (id, updates) => {
+        set((state) => ({
+          habits: state.habits.map(h => 
+            h.id === id ? { ...h, ...updates } : h
+          )
         }));
       },
-
-      addGoal: (g) =>
-        set((s) => ({
-          goals: [
-            ...s.goals,
-            {
-              id: newId(),
-              title: g.title ?? 'New goal',
-              color: g.color ?? '#9ad67d',
-              dueDate: g.dueDate,
-              archived: g.archived,
-            },
-          ],
-        })),
-
-      upsertEntry: (e) => {
-        const i = get().entries.findIndex(
-          (x) => x.date === e.date && x.habitId === e.habitId && (!e.text || x.text === e.text)
-        );
-        let entries = [...get().entries];
-        if (i >= 0) entries[i] = { ...entries[i], ...e };
-        else entries = [...entries, e];
-        const badges = evalBadges(entries, get().badges);
-        set({ entries, badges });
+      
+      addGoal: (g) => {
+        const id = newId();
+        const newGoal: Goal = {
+          id,
+          title: g.title?.trim() || 'New goal',
+          color: g.color || '#F1C453',
+          dueDate: g.dueDate,
+          archived: false,
+        };
+        
+        set((state) => ({
+          goals: [...state.goals, newGoal]
+        }));
       },
+      
+      upsertEntry: (e) => set((s) => {
+        const entries = [...s.entries];
+        
+        let existingIndex = entries.findIndex(x => x.id === e.id);
+        
+        if (existingIndex === -1 && e.habitId) {
+          existingIndex = entries.findIndex(
+            x => x.date === e.date && x.habitId === e.habitId
+          );
+        }
+        
+        if (existingIndex === -1 && !e.habitId) {
+          existingIndex = entries.findIndex(
+            x => x.date === e.date && !x.habitId
+          );
+        }
+        
+        if (existingIndex >= 0) {
+          entries[existingIndex] = { ...entries[existingIndex], ...e };
+        } else {
+          entries.push(e);
+        }
+        
+        const badges = evalBadges(entries, s.badges);
+        return { entries, badges };
+      }),
+      
+      archiveHabit: (id) => set((s) => ({
+        habits: s.habits.map(h => 
+          h.id === id ? { ...h, archived: true } : h
+        )
+      })),
+      
+      archiveGoal: (id) => set((s) => ({
+        goals: s.goals.map(g => 
+          g.id === id ? { ...g, archived: true } : g
+        )
+      })),
+      
+      deleteHabit: (id) => set((s) => ({
+        habits: s.habits.filter(h => h.id !== id)
+      })),
+      
+      deleteGoal: (id) => set((s) => ({
+        goals: s.goals.filter(g => g.id !== id)
+      })),
     }),
-    { name: 'small-steps', storage: createJSONStorage(() => AsyncStorage) }
+    {
+      name: 'small-steps',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
   )
 );
