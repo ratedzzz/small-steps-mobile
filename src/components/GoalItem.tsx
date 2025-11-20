@@ -1,65 +1,197 @@
 // src/components/GoalItem.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import type { Goal } from '../types';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { Goal } from '../types';
+import { useApp } from '../store';
 
-/**
- * Props:
- * - goal: your Goal record
- * - darkMode?: optional flag from parent (e.g., useColorScheme() === 'dark')
- */
-export default function GoalItem({
-  goal,
-  darkMode,
-}: {
+interface Props {
   goal: Goal;
-  darkMode?: boolean;
-}) {
-  // Light/Dark tokens as plain objects (not StyleSheet.create)
-  const theme = darkMode ? DARK : LIGHT;
+  darkMode: boolean;
+  onEdit?: (goal: Goal) => void;
+}
 
-  // Be flexible about label key (supports legacy 'title')
-  const label = (goal as any).name ?? (goal as any).title ?? 'Goal';
+export default function GoalItem({ goal, darkMode, onEdit }: Props) {
+  const { archiveGoal, deleteGoal } = useApp();
+  const theme = darkMode ? darkTheme : lightTheme;
 
-  const progress = (goal as any).progress as number | undefined;
-  const showProgress = typeof progress === 'number' && !Number.isNaN(progress);
+  // Mock progress - in real app, calculate from related habits
+  const progress = Math.floor(Math.random() * 100);
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(goal);
+    } else {
+      // Fallback: show options modal
+      Alert.alert(
+        goal.title,
+        'What would you like to do?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Archive',
+            onPress: () => {
+              archiveGoal(goal.id);
+              Alert.alert('Archived', `"${goal.title}" has been moved to archives.`);
+            },
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              Alert.alert(
+                'Delete Goal',
+                `Are you sure you want to delete "${goal.title}"?`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                      deleteGoal(goal.id);
+                    },
+                  },
+                ]
+              );
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleCompleteGoal = () => {
+    Alert.alert(
+      'Goal Completed! 🎉',
+      `Congratulations on completing "${goal.title}"! What would you like to do with this goal?`,
+      [
+        {
+          text: 'Keep',
+          onPress: () => {
+            // Just keep the goal as is
+          },
+        },
+        {
+          text: 'Archive',
+          onPress: () => {
+            archiveGoal(goal.id);
+            Alert.alert('Archived', `"${goal.title}" has been moved to archives.`);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteGoal(goal.id);
+            Alert.alert('Deleted', `"${goal.title}" has been deleted.`);
+          },
+        },
+      ]
+    );
+  };
 
   return (
-    <View style={[styles.row, { borderColor: theme.border }]}>
-      <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-        {label}
-      </Text>
+    <View style={styles.container}>
+      {/* Tappable content area for editing */}
+      <Pressable onPress={handleEdit} style={styles.contentArea}>
+        <View style={[styles.dot, { backgroundColor: goal.color }]} />
+        <View style={styles.content}>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {goal.title}
+          </Text>
+          {goal.dueDate && (
+            <Text style={[styles.dueDate, { color: theme.textSecondary }]}>
+              Due: {new Date(goal.dueDate).toLocaleDateString()}
+            </Text>
+          )}
+          <View style={[styles.progressBar, { backgroundColor: theme.progressBg }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progress}%`, backgroundColor: goal.color },
+              ]}
+            />
+          </View>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+            {progress}% complete
+          </Text>
+        </View>
+      </Pressable>
 
-      {showProgress && (
-        <Text style={[styles.sub, { color: theme.textSecondary }]}>
-          {Math.round(progress * 100)}%
-        </Text>
-      )}
+      {/* Complete button */}
+      <Pressable
+        onPress={handleCompleteGoal}
+        style={[styles.completeButton, { backgroundColor: goal.color }]}
+      >
+        <Text style={styles.completeText}>✓</Text>
+      </Pressable>
     </View>
   );
 }
 
-/* ------------------------------ Theme ------------------------------ */
-
-const LIGHT = {
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  border: '#E5E7EB',
-} as const;
-
-const DARK = {
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  border: '#334155',
-} as const;
-
-/* ------------------------------ Styles ----------------------------- */
-
 const styles = StyleSheet.create({
-  row: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  title: { fontSize: 16, fontWeight: '700' },
-  sub: { fontSize: 12 },
+  contentArea: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  completeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  completeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dueDate: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {
+    height: '100%',
+  },
+  progressText: {
+    fontSize: 12,
+  },
 });
+
+const lightTheme = {
+  text: '#15292E',
+  textSecondary: '#475569',
+  progressBg: '#E5E7EB',
+};
+
+const darkTheme = {
+  text: '#EAF7F6',
+  textSecondary: '#9FB8B6',
+  progressBg: '#334155',
+};

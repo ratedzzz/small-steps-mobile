@@ -18,7 +18,8 @@ export default function HabitItem({
   onToggleDone, 
   onEdit 
 }: HabitItemProps) {
-  // Check if habit is completed today
+  // Check if habit is completed today - resets at midnight automatically
+  // because we compare against today's date
   const isCompleted = habit.doneDate === date;
 
   const handleToggle = () => {
@@ -30,33 +31,45 @@ export default function HabitItem({
   };
 
   return (
-    <Pressable
-      onPress={handleToggle}
-      onLongPress={handleEdit}
+    <View
       style={[
         styles.container,
         { backgroundColor: darkMode ? '#074047' : '#1DA27E' }
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: habit.color }]} />
-      <Text
-        style={[
-          styles.name,
-          isCompleted && styles.nameCompleted,
-        ]}
+      {/* Tappable area for editing - the main content */}
+      <Pressable 
+        onPress={handleEdit}
+        style={styles.contentArea}
       >
-        {habit.name}
-      </Text>
-      <View
-        style={[
-          styles.checkbox,
-          { borderColor: '#FFFFFF' },
-          isCompleted && { backgroundColor: '#FFFFFF' },
-        ]}
-      >
-        {isCompleted && <Text style={[styles.checkmark, { color: darkMode ? '#074047' : '#1DA27E' }]}>✓</Text>}
-      </View>
-    </Pressable>
+        <View style={[styles.dot, { backgroundColor: habit.color }]} />
+        <Text
+          style={[
+            styles.name,
+            isCompleted && styles.nameCompleted,
+          ]}
+        >
+          {habit.name}
+        </Text>
+      </Pressable>
+
+      {/* Separate tappable checkbox */}
+      <Pressable onPress={handleToggle} style={styles.checkboxArea}>
+        <View
+          style={[
+            styles.checkbox,
+            { borderColor: '#FFFFFF' },
+            isCompleted && { backgroundColor: '#FFFFFF' },
+          ]}
+        >
+          {isCompleted && (
+            <Text style={[styles.checkmark, { color: darkMode ? '#074047' : '#1DA27E' }]}>
+              ✓
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
@@ -64,10 +77,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
     marginVertical: 4,
     borderRadius: 8,
+    overflow: 'hidden',
+  },
+  contentArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingLeft: 12,
     gap: 12,
   },
   dot: {
@@ -84,6 +103,9 @@ const styles = StyleSheet.create({
   nameCompleted: {
     textDecorationLine: 'line-through',
     opacity: 0.6,
+  },
+  checkboxArea: {
+    padding: 12,
   },
   checkbox: {
     width: 24,
