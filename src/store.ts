@@ -15,6 +15,7 @@ export type State = {
   addHabit: (h: Partial<Habit>) => void;
   updateHabit: (id: ID, updates: Partial<Habit>) => void;
   addGoal: (g: Partial<Goal>) => void;
+  updateGoal: (id: ID, updates: Partial<Goal>) => void;    // <-- Added here!
   upsertEntry: (e: JournalEntry) => void;
   archiveHabit: (id: ID) => void;
   archiveGoal: (id: ID) => void;
@@ -31,9 +32,9 @@ export const useApp = create<State>()(
       entries: [],
       badges: [],
       pro: false,
-      
+
       setPro: (v) => set({ pro: v }),
-      
+
       addHabit: (h) => {
         const id = newId();
         const newHabit: Habit = {
@@ -43,12 +44,11 @@ export const useApp = create<State>()(
           reminderTime: h.reminderTime,
           archived: false,
         };
-        
         set((state) => ({
           habits: [...state.habits, newHabit]
         }));
       },
-      
+
       updateHabit: (id, updates) => {
         set((state) => ({
           habits: state.habits.map(h => 
@@ -56,7 +56,7 @@ export const useApp = create<State>()(
           )
         }));
       },
-      
+
       addGoal: (g) => {
         const id = newId();
         const newGoal: Goal = {
@@ -66,55 +66,61 @@ export const useApp = create<State>()(
           dueDate: g.dueDate,
           archived: false,
         };
-        
         set((state) => ({
           goals: [...state.goals, newGoal]
         }));
       },
-      
+
+      updateGoal: (id, updates) => { // <-- Implementation added!
+        set((state) => ({
+          goals: state.goals.map(g =>
+            g.id === id ? { ...g, ...updates } : g
+          )
+        }));
+      },
+
       upsertEntry: (e) => set((s) => {
         const entries = [...s.entries];
-        
         let existingIndex = entries.findIndex(x => x.id === e.id);
-        
+
         if (existingIndex === -1 && e.habitId) {
           existingIndex = entries.findIndex(
             x => x.date === e.date && x.habitId === e.habitId
           );
         }
-        
+
         if (existingIndex === -1 && !e.habitId) {
           existingIndex = entries.findIndex(
             x => x.date === e.date && !x.habitId
           );
         }
-        
+
         if (existingIndex >= 0) {
           entries[existingIndex] = { ...entries[existingIndex], ...e };
         } else {
           entries.push(e);
         }
-        
+
         const badges = evalBadges(entries, s.badges);
         return { entries, badges };
       }),
-      
+
       archiveHabit: (id) => set((s) => ({
         habits: s.habits.map(h => 
           h.id === id ? { ...h, archived: true } : h
         )
       })),
-      
+
       archiveGoal: (id) => set((s) => ({
         goals: s.goals.map(g => 
           g.id === id ? { ...g, archived: true } : g
         )
       })),
-      
+
       deleteHabit: (id) => set((s) => ({
         habits: s.habits.filter(h => h.id !== id)
       })),
-      
+
       deleteGoal: (id) => set((s) => ({
         goals: s.goals.filter(g => g.id !== id)
       })),

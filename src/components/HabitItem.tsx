@@ -1,7 +1,8 @@
 // src/components/HabitItem.tsx
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Habit } from '../types';
+
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { Habit } from "../types";
 
 interface HabitItemProps {
   habit: Habit;
@@ -11,15 +12,14 @@ interface HabitItemProps {
   onEdit: (habit: Habit) => void;
 }
 
-export default function HabitItem({ 
-  habit, 
-  date, 
-  darkMode, 
-  onToggleDone, 
-  onEdit 
+export default function HabitItem({
+  habit,
+  date,
+  darkMode,
+  onToggleDone,
+  onEdit,
 }: HabitItemProps) {
-  // Check if habit is completed today - resets at midnight automatically
-  // because we compare against today's date
+  // Resets automatically at midnight because we compare against today's date string
   const isCompleted = habit.doneDate === date;
 
   const handleToggle = () => {
@@ -30,19 +30,18 @@ export default function HabitItem({
     onEdit(habit);
   };
 
+  const bgColor = darkMode ? "#074047" : "#1DA27E";
+
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: darkMode ? '#074047' : '#1DA27E' }
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
       {/* Tappable area for editing - the main content */}
-      <Pressable 
-        onPress={handleEdit}
-        style={styles.contentArea}
-      >
-        <View style={[styles.dot, { backgroundColor: habit.color }]} />
+      <Pressable style={styles.contentArea} onPress={handleEdit}>
+        <View
+          style={[
+            styles.dot,
+            { backgroundColor: habit.color || "#F1C453" },
+          ]}
+        />
         <Text
           style={[
             styles.name,
@@ -54,19 +53,17 @@ export default function HabitItem({
       </Pressable>
 
       {/* Separate tappable checkbox */}
-      <Pressable onPress={handleToggle} style={styles.checkboxArea}>
+      <Pressable style={styles.checkboxArea} onPress={handleToggle}>
         <View
           style={[
             styles.checkbox,
-            { borderColor: '#FFFFFF' },
-            isCompleted && { backgroundColor: '#FFFFFF' },
+            {
+              borderColor: "#FFFFFF",
+              backgroundColor: isCompleted ? "#FFFFFF" : "transparent",
+            },
           ]}
         >
-          {isCompleted && (
-            <Text style={[styles.checkmark, { color: darkMode ? '#074047' : '#1DA27E' }]}>
-              ✓
-            </Text>
-          )}
+          {isCompleted && <Text style={styles.checkmark}>✓</Text>}
         </View>
       </Pressable>
     </View>
@@ -75,16 +72,16 @@ export default function HabitItem({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 4,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   contentArea: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     paddingLeft: 12,
     gap: 12,
@@ -97,11 +94,11 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
+    fontWeight: "500",
+    color: "#FFFFFF",
   },
   nameCompleted: {
-    textDecorationLine: 'line-through',
+    textDecorationLine: "line-through",
     opacity: 0.6,
   },
   checkboxArea: {
@@ -112,11 +109,12 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkmark: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    color: "#1DA27E",
   },
 });

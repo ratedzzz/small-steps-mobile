@@ -1,3 +1,5 @@
+// app/(tabs)/index.tsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -8,11 +10,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { getMotivationalQuote } from "../../src/quotes";
 import { useApp } from "../../src/store";
-import { Habit } from "../../src/types";
-
+import { Habit, Goal } from "../../src/types";
 import AddGoalModal from "../../src/components/AddGoalModal";
 import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
@@ -56,20 +56,25 @@ export default function HomeScreen() {
     pro,
     updateHabit,
     deleteHabit,
-  } = useApp();
+    updateGoal,
+    deleteGoal,
+    addHabit,
+    addGoal,
+  } = useApp() as any;
 
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [dailyQuote, setDailyQuote] = useState("");
-
-  // Track which habit is currently being edited; null means adding new
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
   useEffect(() => {
     setDailyQuote(getMotivationalQuote());
   }, []);
 
+  // YYYY-MM-DD string for "today"
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
   const completedToday = useMemo(() => {
     const todayEntries = entries.filter(
       (e: any) => e?.date === today && e?.habitId
@@ -77,42 +82,87 @@ export default function HomeScreen() {
     return todayEntries.filter((e: any) => e?.completed).length;
   }, [entries, today]);
 
+  // Checkbox toggle for daily completion (resets by date)
   const handleToggleDone = (habitId: string, doneForDay: boolean) => {
     const newDoneDate = doneForDay ? today : undefined;
     updateHabit(habitId, { doneDate: newDoneDate });
   };
 
+  // When user taps a habit row (not the checkbox)
   const handleEditHabit = (habit: Habit) => {
     setSelectedHabit(habit);
     setShowAddHabit(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseHabitModal = () => {
     setSelectedHabit(null);
     setShowAddHabit(false);
   };
 
-  const handleSaveHabit = (habit: Partial<Habit>) => {
-    if (habit.id) {
-      updateHabit(habit.id, habit);
+  // Called from AddHabitModal when saving
+  const handleSaveHabit = (partial: Partial<Habit>) => {
+    if (partial.id) {
+      // Update existing
+      updateHabit(partial.id, partial);
     } else {
-      // Add habit logic (not included here, you can extend as needed)
+      // Add new (from + Add button)
+      addHabit({
+        name: partial.name ?? "",
+        color: partial.color ?? "#1DA27E",
+        reminderTime: partial.reminderTime,
+      });
     }
-    handleCloseModal();
+    handleCloseHabitModal();
   };
 
+  // Called from AddHabitModal when delete is confirmed
   const handleDeleteHabit = (habitId: string) => {
     deleteHabit(habitId);
-    handleCloseModal();
+    handleCloseHabitModal();
+  };
+
+  // When user taps a goal row
+  const handleEditGoal = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setShowAddGoal(true);
+  };
+
+  const handleCloseGoalModal = () => {
+    setSelectedGoal(null);
+    setShowAddGoal(false);
+  };
+
+  const handleSaveGoal = (partial: Partial<Goal>) => {
+    if (partial.id) {
+      updateGoal(partial.id, partial);
+    } else {
+      addGoal({
+        title: partial.title ?? "",
+        color: partial.color ?? "#F1C453",
+        dueDate: partial.dueDate,
+      });
+    }
+    handleCloseGoalModal();
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    deleteGoal(goalId);
+    handleCloseGoalModal();
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      edges={["top", "left", "right"]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1 }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.title, { color: theme.primary }]}>
+            <Text style={[styles.title, { color: theme.text }]}>
               Small Steps
             </Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -126,9 +176,14 @@ export default function HomeScreen() {
         </View>
 
         {/* Daily Quote */}
-        <View style={[styles.quoteCard, { backgroundColor: theme.cardBg }]}>
-          <Text style={styles.quoteIcon}>✨</Text>
-          <Text style={[styles.quoteText, { color: theme.text }]}>
+        <View
+          style={[
+            styles.quoteCard,
+            { backgroundColor: theme.cardBg },
+          ]}
+        >
+          <Text style={styles.quoteIcon}>“</Text>
+          <Text style={[styles.quoteText, { color: theme.textSecondary }]}>
             "{dailyQuote}"
           </Text>
         </View>
@@ -136,17 +191,30 @@ export default function HomeScreen() {
         {/* Today's Progress */}
         {habits.length > 0 && (
           <View
-            style={[styles.progressCard, { backgroundColor: theme.cardBg }]}
+            style={[
+              styles.progressCard,
+              { backgroundColor: theme.cardBg },
+            ]}
           >
-            <Text style={[styles.progressTitle, { color: theme.text }]}>
-              Today's Progress
+            <Text
+              style={[styles.progressTitle, { color: theme.text }]}
+            >
+              Today&apos;s Progress
             </Text>
             <View style={styles.progressCircle}>
-              <Text style={[styles.progressNumber, { color: theme.primary }]}>
+              <Text
+                style={[
+                  styles.progressNumber,
+                  { color: theme.primary },
+                ]}
+              >
                 {completedToday}/{habits.length}
               </Text>
               <Text
-                style={[styles.progressLabel, { color: theme.textSecondary }]}
+                style={[
+                  styles.progressLabel,
+                  { color: theme.textSecondary },
+                ]}
               >
                 completed
               </Text>
@@ -155,7 +223,12 @@ export default function HomeScreen() {
         )}
 
         {/* Habits */}
-        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.cardBg },
+          ]}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Daily Habits
@@ -165,7 +238,10 @@ export default function HomeScreen() {
                 setSelectedHabit(null); // Adding new habit
                 setShowAddHabit(true);
               }}
-              style={[styles.addButton, { backgroundColor: theme.primary }]}
+              style={[
+                styles.addButton,
+                { backgroundColor: theme.primary },
+              ]}
             >
               <Text style={styles.addButtonText}>+ Add</Text>
             </Pressable>
@@ -173,12 +249,14 @@ export default function HomeScreen() {
 
           {habits.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              <Text
+                style={[styles.emptyText, { color: theme.textSecondary }]}
+              >
                 No habits yet. Start by adding your first small step!
               </Text>
             </View>
           ) : (
-            habits.map((habit) => (
+            habits.map((habit: Habit) => (
               <HabitItem
                 key={habit.id}
                 habit={habit}
@@ -192,14 +270,25 @@ export default function HomeScreen() {
         </View>
 
         {/* Goals */}
-        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.cardBg },
+          ]}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Goals
             </Text>
             <Pressable
-              onPress={() => setShowAddGoal(true)}
-              style={[styles.addButton, { backgroundColor: theme.primary }]}
+              onPress={() => {
+                setSelectedGoal(null);
+                setShowAddGoal(true);
+              }}
+              style={[
+                styles.addButton,
+                { backgroundColor: theme.primary },
+              ]}
             >
               <Text style={styles.addButtonText}>+ Add</Text>
             </Pressable>
@@ -207,48 +296,68 @@ export default function HomeScreen() {
 
           {goals.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              <Text
+                style={[styles.emptyText, { color: theme.textSecondary }]}
+              >
                 Set a goal to work towards!
               </Text>
             </View>
           ) : (
-            goals.map((goal) => (
-              <GoalItem key={goal.id} goal={goal} darkMode={darkMode} />
+            goals.map((goal: Goal) => (
+              <GoalItem
+                key={goal.id}
+                goal={goal}
+                darkMode={darkMode}
+                onEdit={handleEditGoal}
+              />
             ))
           )}
         </View>
 
         {/* Pro CTA */}
         {!pro && (
-          <Pressable
-            style={[styles.proCard, { backgroundColor: theme.accent }]}
+          <View
+            style={[
+              styles.proCard,
+              { backgroundColor: theme.accent },
+            ]}
           >
             <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
             <Text style={styles.proText}>
               Unlock unlimited habits, advanced analytics, and more!
             </Text>
-            <View style={styles.proButton}>
-              <Text style={[styles.proButtonText, { color: theme.accent }]}>
+            <Pressable style={styles.proButton}>
+              <Text
+                style={[
+                  styles.proButtonText,
+                  { color: PALETTE.deepTeal },
+                ]}
+              >
                 Learn More
               </Text>
-            </View>
-          </Pressable>
+            </Pressable>
+          </View>
         )}
       </ScrollView>
 
-      {/* Modals */}
+      {/* Habit Modal (add/edit) */}
       <AddHabitModal
         visible={showAddHabit}
-        onClose={handleCloseModal}
+        onClose={handleCloseHabitModal}
         darkMode={darkMode}
         habit={selectedHabit}
         onSave={handleSaveHabit}
         onDelete={handleDeleteHabit}
       />
+
+      {/* Goal Modal (add/edit) */}
       <AddGoalModal
         visible={showAddGoal}
-        onClose={() => setShowAddGoal(false)}
+        onClose={handleCloseGoalModal}
         darkMode={darkMode}
+        goal={selectedGoal}
+        onSave={handleSaveGoal}
+        onDelete={handleDeleteGoal}
       />
     </SafeAreaView>
   );
@@ -262,7 +371,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -277,7 +385,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-
   quoteCard: {
     padding: 20,
     borderRadius: 16,
@@ -299,7 +406,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
   },
-
   progressCard: {
     padding: 20,
     borderRadius: 16,
@@ -327,7 +433,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-
   section: {
     padding: 16,
     borderRadius: 16,
@@ -348,7 +453,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
   },
-
   addButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -359,7 +463,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-
   emptyState: {
     paddingVertical: 32,
     alignItems: "center",
@@ -368,7 +471,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
-
   proCard: {
     padding: 24,
     borderRadius: 16,
