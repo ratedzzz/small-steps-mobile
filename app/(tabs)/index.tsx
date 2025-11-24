@@ -8,10 +8,9 @@ import {
   Text,
   useColorScheme,
   View,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ConfettiCannon from "react-native-confetti-cannon"; // <--- Make sure to npm install
+import ConfettiCannon from "react-native-confetti-cannon";
 import { useApp } from "../../src/store";
 import { Habit, Goal } from "../../src/types";
 import AddGoalModal from "../../src/components/AddGoalModal";
@@ -19,7 +18,6 @@ import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
 
-// Palette
 const PALETTE = {
   deepTeal: "#15292E",
   teal: "#074047",
@@ -46,7 +44,6 @@ const DARK = {
   accent: PALETTE.goldSoft,
 } as const;
 
-// Sample quotes list
 const quotes = [
   { text: "Small steps lead to big changes.", author: "Fred DeVito" },
   { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
@@ -58,11 +55,6 @@ const quotes = [
 export default function HomeScreen() {
   const darkMode = useColorScheme() === "dark";
   const theme = darkMode ? DARK : LIGHT;
-  
-
-  // Dummy user info: replace with your own logic as needed!
-  const userAvatarUrl = "https://ui-avatars.com/api/?name=User"; // Placeholder avatar
-  const userId = "user123"; // Example user ID
 
   const {
     habits = [],
@@ -88,7 +80,6 @@ export default function HomeScreen() {
   const [completionPhrase, setCompletionPhrase] = useState("");
 
   useEffect(() => {
-    // Pick a random quote each session
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
 
@@ -102,12 +93,9 @@ export default function HomeScreen() {
 
   // Checkbox toggle for daily completion (plus animation/phrase)
   const phrases = ["Great Job!", "You Did It!", "Way To Go!"];
-
   const handleToggleDone = (habitId: string, doneForDay: boolean) => {
     const newDoneDate = doneForDay ? undefined : today;
     updateHabit(habitId, { doneDate: newDoneDate });
-
-    // Show phrase and confetti only if just marked complete now
     if (!doneForDay && newDoneDate === today) {
       setCompletionPhrase(phrases[Math.floor(Math.random() * phrases.length)]);
       setShowConfetti(true);
@@ -141,7 +129,6 @@ export default function HomeScreen() {
     handleCloseHabitModal();
   };
 
-  // When user taps a goal row
   const handleEditGoal = (goal: Goal) => {
     setSelectedGoal(goal);
     setShowAddGoal(true);
@@ -176,15 +163,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         style={{ flex: 1 }}
       >
-        {/* Avatar & User ID header */}
-        <View style={styles.userHeader}>
-          <Image
-            source={{ uri: userAvatarUrl }}
-            style={styles.avatar}
-          />
-          <Text style={styles.userId}>User ID: {userId}</Text>
-        </View>
-
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -225,9 +203,7 @@ export default function HomeScreen() {
               { backgroundColor: theme.cardBg },
             ]}
           >
-            <Text
-              style={[styles.progressTitle, { color: theme.text }]}
-            >
+            <Text style={[styles.progressTitle, { color: theme.text }]}>
               Habits Completed Today
             </Text>
             <View style={styles.progressCircle}>
@@ -401,44 +377,16 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  userHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-    backgroundColor: "#eee",
-  },
-  userId: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#888",
-  },
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 100 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-  },
+  title: { fontSize: 32, fontWeight: "bold" },
+  subtitle: { fontSize: 14, marginTop: 4 },
   quoteCard: {
     padding: 10,
     minHeight: 60,
@@ -451,10 +399,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  quoteIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
+  quoteIcon: { fontSize: 32, marginBottom: 8 },
   quoteText: {
     fontSize: 14,
     fontStyle: "italic",
@@ -485,9 +430,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 10,
   },
-  progressCircle: {
-    alignItems: "center",
-  },
+  progressCircle: { alignItems: "center" },
   progressNumber: {
     fontSize: 48,
     fontWeight: "bold",

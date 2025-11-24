@@ -1,6 +1,6 @@
-/// app/(tabs)/_layout.tsx
+// app/(tabs)/_layout.tsx
 import React, { useEffect } from 'react';
-import { View, Text, useColorScheme, Image, Dimensions } from 'react-native';
+import { View, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,7 +60,6 @@ function parseTimeString(input?: string): { hour: number; minute: number } | nul
 function TabsInner() {
   const darkMode = useColorScheme() === 'dark';
   const theme = darkMode ? DARK : LIGHT;
-  // Gold for icons + labels (active and inactive)
   const GOLD = theme.accent;
   const GOLD_INACTIVE = 'rgba(241, 196, 83, 0.75)';
 
@@ -104,11 +103,6 @@ export default function RootLayout() {
   const darkMode = useColorScheme() === 'dark';
   const theme = darkMode ? DARK : LIGHT;
   const { habits = [] } = useApp();
-  const screenWidth = Dimensions.get("window").width;
-
-  // Hardcoded for now; replace when you add user registration
-  const userAvatarUrl = "https://ui-avatars.com/api/?name=Your+Name";
-  const userId = "my_user_id_2025";
 
   useEffect(() => {
     (async () => {
@@ -125,8 +119,8 @@ export default function RootLayout() {
         const t = parseTimeString(habit.reminderTime);
         if (!t) continue;
         await scheduleDailyLocalNotification(t.hour, t.minute, {
-        title: 'Small Steps Reminder 🌟',
-        body: `Time for: ${habit.name}`,
+          title: 'Small Steps Reminder 🌟',
+          body: `Time for: ${habit.name}`,
         });
       }
     })();
@@ -135,38 +129,6 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        {/* Avatar & User ID header is always shown above all tabs */}
-        <View style={{
-          width: screenWidth,
-          height: 55,
-          backgroundColor: "#F7F7F7",
-          flexDirection: "row",
-          alignItems: "center",
-          borderRadius: 16,
-          marginBottom: 6,
-          paddingHorizontal: 12,
-          justifyContent: "flex-start",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.09,
-          marginTop: 8,
-        }}>
-          <Image
-            source={{ uri: userAvatarUrl }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              marginRight: 14,
-              backgroundColor: "#dee",
-              borderWidth: 2,
-              borderColor: "#eee",
-            }}
-          />
-          <Text style={{ fontSize: 18, fontWeight: "600", color: "#333" }}>
-            {userId}
-          </Text>
-        </View>
         <TabsInner />
       </View>
     </SafeAreaProvider>

@@ -1,5 +1,3 @@
-// src/components/HabitItem.tsx
-
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Habit } from "../types";
@@ -12,6 +10,10 @@ interface HabitItemProps {
   onEdit: (habit: Habit) => void;
 }
 
+// Check if habit is completed today
+const isHabitCompleted = (habit: Habit, date: string) =>
+  habit.doneDate === date;
+
 export default function HabitItem({
   habit,
   date,
@@ -19,29 +21,24 @@ export default function HabitItem({
   onToggleDone,
   onEdit,
 }: HabitItemProps) {
-  // Resets automatically at midnight because we compare against today's date string
-  const isCompleted = habit.doneDate === date;
+  const isCompleted = isHabitCompleted(habit, date);
 
-  const handleToggle = () => {
-    onToggleDone(habit.id, !isCompleted);
-  };
-
-  const handleEdit = () => {
-    onEdit(habit);
-  };
-
-  const bgColor = darkMode ? "#074047" : "#1DA27E";
+  const handleToggle = () => onToggleDone(habit.id, isCompleted);
+  const handleEdit = () => onEdit(habit);
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* Tappable area for editing - the main content */}
-      <Pressable style={styles.contentArea} onPress={handleEdit}>
-        <View
-          style={[
-            styles.dot,
-            { backgroundColor: habit.color || "#F1C453" },
-          ]}
-        />
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: darkMode ? "#074047" : "#1DA27E" },
+      ]}
+    >
+      <Pressable
+        onPress={handleEdit}
+        style={styles.contentArea}
+        android_ripple={{ color: "#33333322" }}
+      >
+        <View style={[styles.dot, { backgroundColor: habit.color }]} />
         <Text
           style={[
             styles.name,
@@ -52,18 +49,19 @@ export default function HabitItem({
         </Text>
       </Pressable>
 
-      {/* Separate tappable checkbox */}
-      <Pressable style={styles.checkboxArea} onPress={handleToggle}>
+      {/* Checkbox is separate and does not affect modal */}
+      <Pressable
+        onPress={handleToggle}
+        style={styles.checkboxArea}
+        android_ripple={{ color: "#33333322" }}
+      >
         <View
           style={[
-            styles.checkbox,
-            {
-              borderColor: "#FFFFFF",
-              backgroundColor: isCompleted ? "#FFFFFF" : "transparent",
-            },
+            styles.checkboxOuter,
+            isCompleted && styles.checkboxOuterDone,
           ]}
         >
-          {isCompleted && <Text style={styles.checkmark}>✓</Text>}
+          {isCompleted && <View style={styles.checkboxInner} />}
         </View>
       </Pressable>
     </View>
@@ -74,47 +72,55 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 4,
-    borderRadius: 8,
-    overflow: "hidden",
+    borderRadius: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   contentArea: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingLeft: 12,
-    gap: 12,
+    gap: 10,
   },
   dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 7,
   },
   name: {
-    flex: 1,
     fontSize: 16,
-    fontWeight: "500",
-    color: "#FFFFFF",
+    fontWeight: "600",
+    color: "#fff",
   },
   nameCompleted: {
     textDecorationLine: "line-through",
-    opacity: 0.6,
+    opacity: 0.5,
   },
   checkboxArea: {
-    padding: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+    marginLeft: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkmark: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#1DA27E",
+  checkboxOuter: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: "#fff",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxOuterDone: {
+    backgroundColor: "#fff",
+    borderColor: "#fff",
+  },
+  checkboxInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#1DA27E",
   },
 });
