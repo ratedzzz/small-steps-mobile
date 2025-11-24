@@ -1,10 +1,9 @@
-// app/(tabs)/_layout.tsx
+/// app/(tabs)/_layout.tsx
 import React, { useEffect } from 'react';
-import { View, useColorScheme } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, useColorScheme, Image, Dimensions } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useApp } from '../../src/store';
 import {
   setupNotificationHandler,
@@ -13,14 +12,13 @@ import {
   cancelAll,
 } from '../../src/notifications';
 
-// -------- Palette from your images --------
 const PALETTE = {
   deepTeal: '#15292E',
   teal: '#074047',
   aqua: '#1C8585',
   mint: '#1DA27E',
   gold: '#E0A800',
-  goldSoft: '#F1C453',  // ✨ same hue as the stars in your screenshot
+  goldSoft: '#F1C453',
   goldPale: '#F6D88B',
 } as const;
 
@@ -44,7 +42,7 @@ const DARK = {
   border: '#2A3C40',
 } as const;
 
-// Parse "07:30" or "07:30 AM"/"7:30 pm"
+// Parses reminderTime string for notification scheduling
 function parseTimeString(input?: string): { hour: number; minute: number } | null {
   if (!input) return null;
   const s = input.toUpperCase().trim();
@@ -60,13 +58,11 @@ function parseTimeString(input?: string): { hour: number; minute: number } | nul
 }
 
 function TabsInner() {
-  const insets = useSafeAreaInsets();
   const darkMode = useColorScheme() === 'dark';
   const theme = darkMode ? DARK : LIGHT;
-
   // Gold for icons + labels (active and inactive)
   const GOLD = theme.accent;
-  const GOLD_INACTIVE = 'rgba(241, 196, 83, 0.75)'; // subtle difference
+  const GOLD_INACTIVE = 'rgba(241, 196, 83, 0.75)';
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -79,8 +75,8 @@ function TabsInner() {
             backgroundColor: theme.cardBg,
             borderTopColor: theme.border,
             borderTopWidth: 1,
-            paddingBottom: Math.max(insets.bottom, 8),
-            height: 56 + Math.max(insets.bottom, 8),
+            paddingBottom: 8,
+            height: 64,
           },
           tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
           tabBarIcon: ({ color, size, focused }) => {
@@ -106,7 +102,13 @@ function TabsInner() {
 
 export default function RootLayout() {
   const darkMode = useColorScheme() === 'dark';
+  const theme = darkMode ? DARK : LIGHT;
   const { habits = [] } = useApp();
+  const screenWidth = Dimensions.get("window").width;
+
+  // Hardcoded for now; replace when you add user registration
+  const userAvatarUrl = "https://ui-avatars.com/api/?name=Your+Name";
+  const userId = "my_user_id_2025";
 
   useEffect(() => {
     (async () => {
@@ -126,14 +128,45 @@ export default function RootLayout() {
         title: 'Small Steps Reminder 🌟',
         body: `Time for: ${habit.name}`,
         });
-
       }
     })();
   }, [habits]);
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: darkMode ? DARK.bg : LIGHT.bg }}>
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+        {/* Avatar & User ID header is always shown above all tabs */}
+        <View style={{
+          width: screenWidth,
+          height: 55,
+          backgroundColor: "#F7F7F7",
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 16,
+          marginBottom: 6,
+          paddingHorizontal: 12,
+          justifyContent: "flex-start",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.09,
+          marginTop: 8,
+        }}>
+          <Image
+            source={{ uri: userAvatarUrl }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              marginRight: 14,
+              backgroundColor: "#dee",
+              borderWidth: 2,
+              borderColor: "#eee",
+            }}
+          />
+          <Text style={{ fontSize: 18, fontWeight: "600", color: "#333" }}>
+            {userId}
+          </Text>
+        </View>
         <TabsInner />
       </View>
     </SafeAreaProvider>

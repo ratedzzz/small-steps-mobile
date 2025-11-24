@@ -1,14 +1,16 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../store';
+// src/screens/ArchivesScreen.tsx
+
+import React, { useMemo } from "react";
+import { View, Text, ScrollView, StyleSheet, useColorScheme } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useApp } from "../store";
 
 const PALETTE = {
-  tealBg: '#15292E',
-  cardBg: '#074047',
-  textLight: '#EAF7F6',
-  accent: '#1DA27E',
-  gold: '#E0A800'
+  tealBg: "#15292E",
+  cardBg: "#074047",
+  textLight: "#EAF7F6",
+  accent: "#1DA27E",
+  gold: "#E0A800",
 };
 
 export default function ArchivesScreen() {
@@ -16,37 +18,37 @@ export default function ArchivesScreen() {
   const theme = {
     bg: PALETTE.tealBg,
     cardBg: PALETTE.cardBg,
-    text: PALETTE.textLight
+    text: PALETTE.textLight,
   };
 
   const { entries = [], habits = [], goals = [] } = useApp();
 
   // Maps for habit and goal display names
   const habitName = useMemo(() => {
-    const m = new Map();
-    for (const h of habits) m.set(h.id, h.title ?? 'Habit');
+    const m = new Map<string, string>();
+    for (const h of habits) m.set(h.id, h.name); // use h.name not h.title
     return m;
   }, [habits]);
 
   const goalName = useMemo(() => {
-    const m = new Map();
-    for (const g of goals) m.set(g.id, g.title ?? 'Goal');
+    const m = new Map<string, string>();
+    for (const g of goals) m.set(g.id, g.title); // goals have 'title'
     return m;
   }, [goals]);
 
   // Group entries
-  const habitEntries = entries.filter(e => e.habitId);
-  const journalEntries = entries.filter(e => !e.habitId);
+  const habitEntries = entries.filter((e) => e.habitId);
+  const journalEntries = entries.filter((e) => !e.habitId);
 
   // Entries supporting goals
-  const goalEntries: { goal: string; entry: typeof entries[0]; }[] = [];
+  const goalEntries: { goal: string; entry: any }[] = [];
   for (const goal of goals) {
     for (const entry of entries) {
-      // Show journal entry if its habitId is related to the goal
+      if (!goal.relatedHabitIds || !entry.habitId) continue;
       if (
-        goal.relatedHabitIds &&
-        entry.habitId &&
-        goal.relatedHabitIds.includes(entry.habitId)
+        Array.isArray(goal.relatedHabitIds)
+          ? goal.relatedHabitIds.includes(entry.habitId)
+          : goal.relatedHabitIds === entry.habitId
       ) {
         goalEntries.push({ goal: goal.title, entry });
       }
@@ -66,9 +68,11 @@ export default function ArchivesScreen() {
         {habitEntries.length > 0 && (
           <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
             <Text style={styles.listTitle}>Habit Entries</Text>
-            {habitEntries.map(entry => (
+            {habitEntries.map((entry) => (
               <View key={entry.id} style={styles.entryBox}>
-                <Text style={styles.entryName}>{habitName.get(entry.habitId!) ?? 'Habit'}</Text>
+                <Text style={styles.entryName}>
+                  {habitName.get(entry.habitId ?? "")}
+                </Text>
                 <Text style={styles.entryDate}>
                   {new Date(entry.date).toLocaleDateString()}
                 </Text>
@@ -82,7 +86,7 @@ export default function ArchivesScreen() {
           <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
             <Text style={styles.listTitle}>Goal Entries</Text>
             {goalEntries.map(({ goal, entry }) => (
-              <View key={entry.id + goal} style={styles.entryBox}>
+              <View key={entry.id} style={styles.entryBox}>
                 <Text style={styles.entryName}>{goal}</Text>
                 <Text style={styles.entryDate}>
                   {new Date(entry.date).toLocaleDateString()}
@@ -96,7 +100,7 @@ export default function ArchivesScreen() {
         {journalEntries.length > 0 && (
           <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
             <Text style={styles.listTitle}>Journal Entries</Text>
-            {journalEntries.map(entry => (
+            {journalEntries.map((entry) => (
               <View key={entry.id} style={styles.entryBox}>
                 <Text style={styles.entryDate}>
                   {new Date(entry.date).toLocaleDateString()}
@@ -118,22 +122,40 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 3
+    elevation: 3,
   },
-  sectionTitle: { fontSize: 28, fontWeight: 'bold', color: PALETTE.textLight, marginBottom: 8 },
+  sectionTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: PALETTE.textLight,
+    marginBottom: 8,
+  },
   sectionDesc: { fontSize: 16, color: PALETTE.textLight },
-  listTitle: { fontSize: 21, fontWeight: 'bold', color: PALETTE.gold, marginBottom: 10 },
+  listTitle: {
+    fontSize: 21,
+    fontWeight: "bold",
+    color: PALETTE.gold,
+    marginBottom: 10,
+  },
   entryBox: {
-    backgroundColor: 'rgba(0,0,0,0.07)',
+    backgroundColor: "rgba(0,0,0,0.07)",
     borderRadius: 10,
     marginBottom: 12,
-    padding: 10
+    padding: 10,
   },
-  entryName: { fontSize: 16, fontWeight: 'bold', color: PALETTE.textLight },
-  entryDate: { fontSize: 13, color: PALETTE.textLight, marginBottom: 4 },
-  entryText: { fontSize: 14, color: PALETTE.textLight }
+  entryName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: PALETTE.textLight,
+  },
+  entryDate: {
+    fontSize: 13,
+    color: PALETTE.textLight,
+    marginBottom: 4,
+  },
+  entryText: { fontSize: 14, color: PALETTE.textLight },
 });

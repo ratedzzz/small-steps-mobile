@@ -16,11 +16,10 @@ function uniqueById<T extends { id: ID }>(list: T[]): T[] {
 
 function makeBadge(
   id: ID,
-  title: string,
-  description: string,
-  icon?: string
+  name: string,
+  description: string
 ): Badge {
-  return { id, title, description, icon, unlockedAt: null };
+  return { id, name, description, unlockedAt: undefined };
 }
 
 type EvalArgs = {
@@ -40,7 +39,7 @@ function normalizeArgs(
   const empty: EvalArgs = { entries: [], existingBadges: [], habits: [], goals: [] };
 
   const isEntry = (x: any) => x && typeof x.date === 'string';
-  const isBadge = (x: any) => x && typeof (x.title ?? x.name) === 'string' && typeof x.id === 'string';
+  const isBadge = (x: any) => x && typeof (x.name) === 'string' && typeof x.id === 'string';
   const isHabit = (x: any) => x && typeof x.name === 'string' && typeof x.color === 'string';
   const isGoal  = (x: any) => x && typeof x.title === 'string' && typeof x.color === 'string';
 
@@ -78,10 +77,10 @@ export function evalBadges(a?: any[], b?: any[], c?: any[], d?: any[]): Badge[] 
 
   // Catalog of built-in badges (start locked; unlock by conditions below)
   const catalog: Badge[] = [
-    makeBadge('first_habit',   'First Habit!',   'Created your first habit.', '🏁'),
-    makeBadge('first_goal',    'Goal Getter',    'Added your first goal.',    '🎯'),
-    makeBadge('first_journal', 'Dear Diary',     'Wrote your first entry.',   '📔'),
-  ];
+  makeBadge('first_habit',   'First Habit!',   'Created your first habit.'),
+  makeBadge('first_goal',    'Goal Getter',    'Added your first goal.'),
+  makeBadge('first_journal', 'Dear Diary',     'Wrote your first entry.'),
+];
 
   // Merge existing + catalog without losing prior unlockedAt values
   const map = new Map<ID, Badge>();
