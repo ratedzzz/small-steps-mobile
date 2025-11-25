@@ -32,7 +32,11 @@ export default function GoalItem({ goal, darkMode, onEdit }: Props) {
           { backgroundColor: goal.color },
         ]}
       />
-      <Text style={[styles.name, { color: theme.text }]}>
+      <Text
+        style={[styles.name, { color: theme.text }]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
         {goal.title}
       </Text>
     </Pressable>
@@ -45,20 +49,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 12,
     marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     shadowColor: "#000",
     shadowOpacity: 0.07,
     elevation: 2,
+    minHeight: 44,
   },
   dot: {
     width: 16,
     height: 16,
     borderRadius: 8,
     marginRight: 12,
+    marginLeft: 2,  // for more space from edge, matches HabitItem
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
+    marginRight: 14,
+    marginLeft: 2,
+    flexShrink: 1,
   },
 });

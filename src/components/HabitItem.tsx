@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Habit } from "../types";
 
 interface HabitItemProps {
@@ -40,10 +40,9 @@ export default function HabitItem({
       >
         <View style={[styles.dot, { backgroundColor: habit.color }]} />
         <Text
-          style={[
-            styles.name,
-            isCompleted && styles.nameCompleted,
-          ]}
+          style={[styles.name, isCompleted && styles.nameCompleted]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
           {habit.name}
         </Text>
@@ -74,32 +73,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 12,
     marginBottom: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
+    minHeight: 44,
   },
   contentArea: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
   },
   dot: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    marginRight: 7,
+    marginRight: 12,
+    marginLeft: 2,
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#fff",
+    marginRight: 14,
+    marginLeft: 2,
+    flexShrink: 1,
   },
   nameCompleted: {
     textDecorationLine: "line-through",
     opacity: 0.5,
   },
   checkboxArea: {
-    marginLeft: 12,
+    marginLeft: 6,
     alignItems: "center",
     justifyContent: "center",
   },

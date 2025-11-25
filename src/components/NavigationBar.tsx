@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
-    paddingBottom: 20,
+    paddingBottom: 28, // Increased from 20 to raise nav bar
     paddingTop: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },

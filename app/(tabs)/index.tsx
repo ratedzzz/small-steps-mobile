@@ -59,7 +59,6 @@ export default function HomeScreen() {
   const {
     habits = [],
     goals = [],
-    entries = [],
     pro,
     updateHabit,
     deleteHabit,
@@ -91,7 +90,7 @@ export default function HomeScreen() {
     return habits.filter((h: Habit) => h.doneDate === today).length;
   }, [habits, today]);
 
-  // Checkbox toggle for daily completion (plus animation/phrase)
+  // Checkbox toggle (animation & phrase)
   const phrases = ["Great Job!", "You Did It!", "Way To Go!"];
   const handleToggleDone = (habitId: string, doneForDay: boolean) => {
     const newDoneDate = doneForDay ? undefined : today;
@@ -103,7 +102,7 @@ export default function HomeScreen() {
     }
   };
 
-  // When user taps a habit row (not the checkbox)
+  // Habit modals
   const handleEditHabit = (habit: Habit) => {
     setSelectedHabit(habit);
     setShowAddHabit(true);
@@ -129,6 +128,7 @@ export default function HomeScreen() {
     handleCloseHabitModal();
   };
 
+  // Goal modals
   const handleEditGoal = (goal: Goal) => {
     setSelectedGoal(goal);
     setShowAddGoal(true);
@@ -179,15 +179,22 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Daily Quote */}
+        {/* Daily Quote - small, with huge gold “ */}
         <View
           style={[
             styles.quoteCard,
-            { backgroundColor: theme.cardBg, padding: 10, minHeight: 60 },
+            { backgroundColor: theme.cardBg, padding: 8, minHeight: 38, marginBottom: 8 }
           ]}
         >
-          <Text style={styles.quoteIcon}>“</Text>
-          <Text style={[styles.quoteText, { color: PALETTE.goldSoft }]}>
+          <Text
+            style={{
+              fontSize: 46,
+              marginBottom: 0,
+              color: PALETTE.goldSoft,
+              fontWeight: "bold",
+            }}
+          >“</Text>
+          <Text style={[styles.quoteText, { color: PALETTE.goldSoft, fontSize: 13 }]}>
             "{dailyQuote.text}"
           </Text>
           <Text style={[styles.author, { color: PALETTE.goldSoft }]}>
@@ -195,39 +202,29 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Habits Completed Today / Progress */}
+        {/* Habits Completed Today / Progress - small, no "completed" word */}
         {habits.length > 0 && (
           <View
             style={[
               styles.progressCard,
-              { backgroundColor: theme.cardBg },
+              { backgroundColor: theme.cardBg, height: 70, marginBottom: 10, padding: 8 }
             ]}
           >
-            <Text style={[styles.progressTitle, { color: theme.text }]}>
+            <Text style={[styles.progressTitle, { color: theme.text, marginBottom: 4 }]}>
               Habits Completed Today
             </Text>
-            <View style={styles.progressCircle}>
-              <Text
-                style={[
-                  styles.progressNumber,
-                  { color: theme.primary },
-                ]}
-              >
-                {completedToday}/{habits.length}
-              </Text>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  { color: theme.textSecondary },
-                ]}
-              >
-                completed
-              </Text>
-            </View>
+            <Text
+              style={[
+                styles.progressNumber,
+                { color: theme.primary, fontSize: 34 },
+              ]}
+            >
+              {completedToday}/{habits.length}
+            </Text>
           </View>
         )}
 
-        {/* Confetti animation */}
+        {/* Confetti animation - still global */}
         {showConfetti && (
           <View style={styles.confettiOverlay}>
             <Text style={styles.confettiPhrase}>{completionPhrase}</Text>
@@ -388,10 +385,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: "bold" },
   subtitle: { fontSize: 14, marginTop: 4 },
   quoteCard: {
-    padding: 10,
-    minHeight: 60,
+    padding: 8,
+    minHeight: 38,
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -399,49 +396,48 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  quoteIcon: { fontSize: 32, marginBottom: 8 },
+  quoteIcon: { fontSize: 46, marginBottom: 0, color: PALETTE.goldSoft },
   quoteText: {
-    fontSize: 14,
+    fontSize: 13,
     fontStyle: "italic",
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 17,
     marginBottom: 2,
   },
   author: {
-    fontSize: 12,
+    fontSize: 11,
     fontStyle: "italic",
     textAlign: "center",
-    marginTop: 4,
-    marginBottom: 2,
+    marginTop: 3,
+    marginBottom: 1,
   },
   progressCard: {
-    padding: 16,
+    padding: 8,
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 10,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    height: 70,
   },
   progressTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: "600",
-    marginBottom: 10,
+    marginBottom: 4,
   },
-  progressCircle: { alignItems: "center" },
+  progressCircle: {
+    alignItems: "center",
+  },
   progressNumber: {
-    fontSize: 48,
+    fontSize: 34,
     fontWeight: "bold",
-  },
-  progressLabel: {
-    fontSize: 14,
-    marginTop: 4,
   },
   confettiOverlay: {
     position: "absolute",
-    top: 140,
+    top: 70,
     left: 0,
     right: 0,
     alignItems: "center",
@@ -449,16 +445,16 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   confettiPhrase: {
-    fontSize: 24,
+    fontSize: 22,
     color: PALETTE.goldSoft,
     fontWeight: "bold",
-    padding: 8,
+    padding: 4,
     textAlign: "center",
   },
   section: {
-    padding: 16,
+    padding: 12,
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 13,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -469,34 +465,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 9,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "bold",
   },
   addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
     borderRadius: 8,
   },
   addButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 13,
   },
   emptyState: {
-    paddingVertical: 32,
+    paddingVertical: 28,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "center",
   },
   proCard: {
-    padding: 24,
+    padding: 18,
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -504,26 +500,26 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   proTitle: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 8,
+    marginBottom: 7,
   },
   proText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#FFF",
     opacity: 0.9,
-    marginBottom: 16,
+    marginBottom: 15,
   },
   proButton: {
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 9,
+    paddingHorizontal: 17,
     borderRadius: 8,
     alignSelf: "flex-start",
   },
   proButtonText: {
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 13,
   },
 });

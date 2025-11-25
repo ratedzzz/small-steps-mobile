@@ -11,7 +11,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import ColorPicker, { Swatches } from "reanimated-color-picker";
 import { useApp } from "../store";
 import { Goal } from "../types";
 
@@ -195,36 +194,33 @@ export default function AddGoalModal({
               ]}
             />
 
-            {/* Color */}
+            {/* Color - Only one 12-swatch row remains! */}
             <Text style={[styles.label, { color: theme.text }]}>Color</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 12 }}>
               {[
-                "#1DA27E",
-                "#F1C453",
-                "#3B82F6",
-                "#EC4899",
-                "#F97316",
-                "#22C55E"
-            ].map((swatch) => (
-              <Pressable
-                key={swatch}
-                onPress={() => setColor(swatch)}
-                style={{
-                  margin: 8,
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: swatch,
-                  borderWidth: color === swatch ? 3 : 1,
-                  borderColor: color === swatch ? "#333" : "#ccc",
-                  opacity: color === swatch ? 1 : 0.7,
-                  transform: [{ scale: color === swatch ? 1.15 : 1 }]
-            }}
-          />
-      ))}
-</View>
+                "#1DA27E", "#F1C453", "#3B82F6", "#EC4899",
+                "#F97316", "#22C55E", "#FFD600", "#0FF0FC",
+                "#FF3DFC", "#82FF58", "#3856FF", "#FC2347"
+              ].map((swatch) => (
+                <Pressable
+                  key={swatch}
+                  onPress={() => setColor(swatch)}
+                  style={{
+                    margin: 8,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: swatch,
+                    borderWidth: color === swatch ? 3 : 1,
+                    borderColor: color === swatch ? "#333" : "#ccc",
+                    opacity: color === swatch ? 1 : 0.75,
+                    transform: [{ scale: color === swatch ? 1.15 : 1 }]
+                  }}
+                  android_ripple={{ color: "#aaa" }}
+                />
+              ))}
+            </View>
 
-                
             {/* Due date with auto mm-dd-yyyy formatting */}
             <Text style={[styles.label, { color: theme.text }]}>
               Due Date (Optional)
@@ -243,44 +239,8 @@ export default function AddGoalModal({
                   color: theme.text,
                 },
               ]}
-              maxLength={10} // "MM-DD-YYYY"
+              maxLength={10}
             />
-
-
-<View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 12 }}>
-  {[
-    "#1DA27E", // mint
-    "#F1C453", // gold
-    "#3B82F6", // blue
-    "#EC4899", // pink
-    "#F97316", // orange
-    "#22C55E", // green
-    "#FFD600", // bright yellow
-    "#0FF0FC", // bright cyan
-    "#FF3DFC", // magenta
-    "#82FF58", // bright lime
-    "#3856FF", // bright blue
-    "#FC2347", // hot red
-  ].map((swatch) => (
-    <Pressable
-      key={swatch}
-      onPress={() => setColor(swatch)}
-      style={{
-        margin: 8,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: swatch,
-        borderWidth: color === swatch ? 3 : 1,
-        borderColor: color === swatch ? "#333" : "#ccc",
-        opacity: color === swatch ? 1 : 0.75,
-        transform: [{ scale: color === swatch ? 1.15 : 1 }],
-      }}
-      android_ripple={{ color: "#aaa" }}
-    />
-  ))}
-</View>
-
 
             {/* Buttons */}
             <View style={styles.buttonRow}>
