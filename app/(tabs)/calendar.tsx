@@ -103,8 +103,8 @@ export default function CalendarTab() {
           {entriesForDay.length === 0 ? (
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No entries.</Text>
           ) : (
-            entriesForDay.map((entry) => (
-              <View key={entry.id} style={styles.entryRow}>
+            entriesForDay.map((entry, index) => (
+              <View key={`${entry.id}-${index}`} style={styles.entryRow}>
                 <View style={[styles.dot, { backgroundColor: theme.accent }]} />
                 <View style={styles.entryTextContainer}>
                   <Text style={[styles.entryTitle, { color: theme.text }]}>

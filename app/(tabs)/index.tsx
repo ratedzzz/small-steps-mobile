@@ -183,7 +183,7 @@ export default function HomeScreen() {
         <View
           style={[
             styles.quoteCard,
-            { backgroundColor: theme.cardBg, padding: 8, minHeight: 38, marginBottom: 8 }
+            { backgroundColor: theme.cardBg, padding: 6, minHeight: 28, marginBottom: 8 }
           ]}
         >
           <Text
