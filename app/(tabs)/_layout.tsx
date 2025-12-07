@@ -74,8 +74,8 @@ function TabsInner() {
             backgroundColor: theme.cardBg,
             borderTopColor: theme.border,
             borderTopWidth: 1,
-            paddingBottom: 8,
-            height: 64,
+            paddingBottom: 20,
+            height: 76,
           },
           tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
           tabBarIcon: ({ color, size, focused }) => {

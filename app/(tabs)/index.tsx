@@ -10,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ConfettiCannon from "react-native-confetti-cannon";
 import { useApp } from "../../src/store";
 import { Habit, Goal } from "../../src/types";
 import AddGoalModal from "../../src/components/AddGoalModal";
@@ -52,6 +51,25 @@ const quotes = [
   { text: "Consistency is more important than perfection.", author: "Unknown" },
 ];
 
+// Expanded celebration phrases
+const CELEBRATION_PHRASES = [
+  "Great Job!",
+  "Way To Go!",
+  "You Did It!",
+  "Awesome!",
+  "Fantastic!",
+  "Amazing!",
+  "Well Done!",
+  "Keep It Up!",
+  "You Rock!",
+  "Crushing It!",
+  "On Fire!",
+  "Unstoppable!",
+  "Nailed It!",
+  "Perfect!",
+  "Incredible!",
+];
+
 export default function HomeScreen() {
   const darkMode = useColorScheme() === "dark";
   const theme = darkMode ? DARK : LIGHT;
@@ -74,10 +92,6 @@ export default function HomeScreen() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
-  // Confetti and phrase state
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [completionPhrase, setCompletionPhrase] = useState("");
-
   useEffect(() => {
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
@@ -90,16 +104,10 @@ export default function HomeScreen() {
     return habits.filter((h: Habit) => h.doneDate === today).length;
   }, [habits, today]);
 
-  // Checkbox toggle (animation & phrase)
-  const phrases = ["Great Job!", "You Did It!", "Way To Go!"];
+  // Checkbox toggle - now just updates the habit, celebration handled in HabitItem
   const handleToggleDone = (habitId: string, doneForDay: boolean) => {
     const newDoneDate = doneForDay ? undefined : today;
     updateHabit(habitId, { doneDate: newDoneDate });
-    if (!doneForDay && newDoneDate === today) {
-      setCompletionPhrase(phrases[Math.floor(Math.random() * phrases.length)]);
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 2000);
-    }
   };
 
   // Habit modals
@@ -179,21 +187,21 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Daily Quote - small, with huge gold “ */}
+        {/* Daily Quote - smaller with reduced top padding and tighter spacing */}
         <View
           style={[
             styles.quoteCard,
-            { backgroundColor: theme.cardBg, padding: 6, minHeight: 28, marginBottom: 8 }
+            { backgroundColor: theme.cardBg, paddingTop: 4, paddingBottom: 6, paddingHorizontal: 6, minHeight: 24, marginBottom: 8 }
           ]}
         >
           <Text
             style={{
               fontSize: 46,
-              marginBottom: 0,
+              marginBottom: -8,
               color: PALETTE.goldSoft,
               fontWeight: "bold",
             }}
-          >“</Text>
+          >"</Text>
           <Text style={[styles.quoteText, { color: PALETTE.goldSoft, fontSize: 13 }]}>
             "{dailyQuote.text}"
           </Text>
@@ -202,12 +210,12 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Habits Completed Today / Progress - small, no "completed" word */}
+        {/* Habits Completed Today / Progress - larger bottom padding, larger/bold title */}
         {habits.length > 0 && (
           <View
             style={[
               styles.progressCard,
-              { backgroundColor: theme.cardBg, height: 70, marginBottom: 10, padding: 8 }
+              { backgroundColor: theme.cardBg, height: 80, marginBottom: 10, paddingTop: 8, paddingHorizontal: 8, paddingBottom: 12 }
             ]}
           >
             <Text style={[styles.progressTitle, { color: theme.text, marginBottom: 4 }]}>
@@ -221,14 +229,6 @@ export default function HomeScreen() {
             >
               {completedToday}/{habits.length}
             </Text>
-          </View>
-        )}
-
-        {/* Confetti animation - still global */}
-        {showConfetti && (
-          <View style={styles.confettiOverlay}>
-            <Text style={styles.confettiPhrase}>{completionPhrase}</Text>
-            <ConfettiCannon count={50} origin={{ x: 0, y: 0 }} fadeOut />
           </View>
         )}
 
@@ -274,6 +274,7 @@ export default function HomeScreen() {
                 darkMode={darkMode}
                 onToggleDone={handleToggleDone}
                 onEdit={handleEditHabit}
+                celebrationPhrases={CELEBRATION_PHRASES}
               />
             ))
           )}
@@ -424,8 +425,8 @@ const styles = StyleSheet.create({
     height: 70,
   },
   progressTitle: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "bold",
     marginBottom: 4,
   },
   progressCircle: {
@@ -434,22 +435,6 @@ const styles = StyleSheet.create({
   progressNumber: {
     fontSize: 34,
     fontWeight: "bold",
-  },
-  confettiOverlay: {
-    position: "absolute",
-    top: 70,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 10,
-    pointerEvents: "none",
-  },
-  confettiPhrase: {
-    fontSize: 22,
-    color: PALETTE.goldSoft,
-    fontWeight: "bold",
-    padding: 4,
-    textAlign: "center",
   },
   section: {
     padding: 12,
