@@ -1,3 +1,4 @@
+// src/store.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -12,11 +13,17 @@ export type State = {
   entries: JournalEntry[];
   badges: Badge[];
   pro: boolean;
+  
+  // Actions
   addHabit: (h: Partial<Habit>) => void;
   updateHabit: (id: ID, updates: Partial<Habit>) => void;
+  toggleHabit: (id: ID, date: string) => void; // <--- NEW ACTION
+  
   addGoal: (g: Partial<Goal>) => void;
-  updateGoal: (id: ID, updates: Partial<Goal>) => void; // <-- Added here!
+  updateGoal: (id: ID, updates: Partial<Goal>) => void;
+  
   upsertEntry: (e: JournalEntry) => void;
+  
   archiveHabit: (id: ID) => void;
   archiveGoal: (id: ID) => void;
   deleteHabit: (id: ID) => void;
@@ -43,10 +50,15 @@ export const useApp = create<State>()(
           color: h.color || "#1DA27E",
           reminderTime: h.reminderTime,
           archived: false,
+          completedDates: [], // Initialize empty array
         };
-        set((state) => ({
-          habits: [...state.habits, newHabit],
-        }));
+        
+        set((state) => {
+          const habits = [...state.habits, newHabit];
+          // Re-evaluate badges
+          const badges = evalBadges(habits, state.goals, state.entries, state.badges);
+          return { habits, badges };
+        });
       },
 
       updateHabit: (id, updates) => {
@@ -57,6 +69,38 @@ export const useApp = create<State>()(
         }));
       },
 
+      // NEW: Handles checking/unchecking a habit for a specific date
+      toggleHabit: (id, date) => {
+        set((state) => {
+          const habits = state.habits.map((h) => {
+            if (h.id !== id) return h;
+
+            const dates = h.completedDates || [];
+            const exists = dates.includes(date);
+
+            let newDates;
+            if (exists) {
+              // Remove date (uncheck)
+              newDates = dates.filter((d) => d !== date);
+            } else {
+              // Add date (check)
+              newDates = [...dates, date];
+            }
+
+            return { 
+              ...h, 
+              completedDates: newDates,
+              // Sync doneDate for simple "today" checks in UI
+              doneDate: newDates.includes(date) ? date : undefined 
+            };
+          });
+
+          // Re-evaluate badges
+          const badges = evalBadges(habits, state.goals, state.entries, state.badges);
+          return { habits, badges };
+        });
+      },
+
       addGoal: (g) => {
         const id = newId();
         const newGoal: Goal = {
@@ -64,15 +108,18 @@ export const useApp = create<State>()(
           title: g.title?.trim() || "New goal",
           color: g.color || "#F1C453",
           dueDate: g.dueDate,
+          createdAt: new Date().toISOString(), // Track creation for Calendar
           archived: false,
         };
-        set((state) => ({
-          goals: [...state.goals, newGoal],
-        }));
+        
+        set((state) => {
+          const goals = [...state.goals, newGoal];
+          const badges = evalBadges(state.habits, goals, state.entries, state.badges);
+          return { goals, badges };
+        });
       },
 
       updateGoal: (id, updates) => {
-        // <-- Implementation added!
         set((state) => ({
           goals: state.goals.map((g) =>
             g.id === id ? { ...g, ...updates } : g
@@ -85,15 +132,10 @@ export const useApp = create<State>()(
           const entries = [...s.entries];
           let existingIndex = entries.findIndex((x) => x.id === e.id);
 
+          // Logic to find existing entry by habit/date if ID not provided
           if (existingIndex === -1 && e.habitId) {
             existingIndex = entries.findIndex(
               (x) => x.date === e.date && x.habitId === e.habitId
-            );
-          }
-
-          if (existingIndex === -1 && !e.habitId) {
-            existingIndex = entries.findIndex(
-              (x) => x.date === e.date && !x.habitId
             );
           }
 
@@ -103,7 +145,7 @@ export const useApp = create<State>()(
             entries.push(e);
           }
 
-          const badges = evalBadges(entries, s.badges);
+          const badges = evalBadges(s.habits, s.goals, entries, s.badges);
           return { entries, badges };
         }),
 

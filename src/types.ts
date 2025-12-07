@@ -1,3 +1,4 @@
+// src/types.ts
 export type ID = string;
 
 export type Habit = {
@@ -6,7 +7,12 @@ export type Habit = {
   color: string;
   reminderTime?: string; // "07:30" in 24-hour format
   archived?: boolean;
-  doneDate?: string; // YYYY-MM-DD - tracks when habit was last completed
+  
+  // NEW: Tracks history of completions for the Calendar
+  completedDates: string[]; 
+  
+  // We keep this for backward compatibility (it will represent the LAST done date)
+  doneDate?: string; 
 };
 
 export type Goal = {
@@ -14,6 +20,10 @@ export type Goal = {
   title: string;
   color: string;
   dueDate?: string;      // YYYY-MM-DD
+  
+  // NEW: Needed so the Calendar knows when to START drawing the line
+  createdAt: string;     
+  
   relatedHabitIds?: ID[];
   archived?: boolean;
 };
@@ -31,4 +41,7 @@ export type Badge = {
   name: string;
   description: string;
   unlockedAt?: string;
+  
+  // NEW: For the new Medal UI
+  icon?: string; 
 };

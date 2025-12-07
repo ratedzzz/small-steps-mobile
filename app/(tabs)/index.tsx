@@ -1,5 +1,4 @@
 // app/(tabs)/index.tsx
-
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -17,6 +16,21 @@ import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
 
+// --- TYPES ---
+interface StoreData {
+  habits: Habit[];
+  goals: Goal[];
+  pro: boolean;
+  updateHabit: (id: string, data: Partial<Habit>) => void;
+  toggleHabit: (id: string, date: string) => void; // <--- NEW
+  deleteHabit: (id: string) => void;
+  updateGoal: (id: string, data: Partial<Goal>) => void;
+  deleteGoal: (id: string) => void;
+  addHabit: (data: Partial<Habit>) => void;
+  addGoal: (data: Partial<Goal>) => void;
+}
+
+// --- THEME ---
 const PALETTE = {
   deepTeal: "#15292E",
   teal: "#074047",
@@ -43,6 +57,7 @@ const DARK = {
   accent: PALETTE.goldSoft,
 } as const;
 
+// --- CONTENT ---
 const quotes = [
   { text: "Small steps lead to big changes.", author: "Fred DeVito" },
   { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
@@ -51,23 +66,10 @@ const quotes = [
   { text: "Consistency is more important than perfection.", author: "Unknown" },
 ];
 
-// Expanded celebration phrases
 const CELEBRATION_PHRASES = [
-  "Great Job!",
-  "Way To Go!",
-  "You Did It!",
-  "Awesome!",
-  "Fantastic!",
-  "Amazing!",
-  "Well Done!",
-  "Keep It Up!",
-  "You Rock!",
-  "Crushing It!",
-  "On Fire!",
-  "Unstoppable!",
-  "Nailed It!",
-  "Perfect!",
-  "Incredible!",
+  "Great Job!", "Way To Go!", "You Did It!", "Awesome!", "Fantastic!",
+  "Amazing!", "Well Done!", "Keep It Up!", "You Rock!", "Crushing It!",
+  "On Fire!", "Unstoppable!", "Nailed It!", "Perfect!", "Incredible!",
 ];
 
 export default function HomeScreen() {
@@ -79,12 +81,13 @@ export default function HomeScreen() {
     goals = [],
     pro,
     updateHabit,
+    toggleHabit, // <--- Destructured here
     deleteHabit,
     updateGoal,
     deleteGoal,
     addHabit,
     addGoal,
-  } = useApp() as any;
+  } = useApp() as StoreData;
 
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -96,29 +99,28 @@ export default function HomeScreen() {
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
 
-  // YYYY-MM-DD string for "today"
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  // Update progress instantly based on habit.doneDate
   const completedToday = useMemo(() => {
-    return habits.filter((h: Habit) => h.doneDate === today).length;
+    // Check if the completedDates array includes today
+    return habits.filter((h) => h.completedDates?.includes(today)).length;
   }, [habits, today]);
 
-  // Checkbox toggle - now just updates the habit, celebration handled in HabitItem
-  const handleToggleDone = (habitId: string, doneForDay: boolean) => {
-    const newDoneDate = doneForDay ? undefined : today;
-    updateHabit(habitId, { doneDate: newDoneDate });
+  const handleToggleDone = (habitId: string) => {
+    // This calls the new store action to toggle the date in the array
+    toggleHabit(habitId, today);
   };
 
-  // Habit modals
   const handleEditHabit = (habit: Habit) => {
     setSelectedHabit(habit);
     setShowAddHabit(true);
   };
+
   const handleCloseHabitModal = () => {
     setSelectedHabit(null);
     setShowAddHabit(false);
   };
+
   const handleSaveHabit = (partial: Partial<Habit>) => {
     if (partial.id) {
       updateHabit(partial.id, partial);
@@ -131,20 +133,22 @@ export default function HomeScreen() {
     }
     handleCloseHabitModal();
   };
+
   const handleDeleteHabit = (habitId: string) => {
     deleteHabit(habitId);
     handleCloseHabitModal();
   };
 
-  // Goal modals
   const handleEditGoal = (goal: Goal) => {
     setSelectedGoal(goal);
     setShowAddGoal(true);
   };
+
   const handleCloseGoalModal = () => {
     setSelectedGoal(null);
     setShowAddGoal(false);
   };
+
   const handleSaveGoal = (partial: Partial<Goal>) => {
     if (partial.id) {
       updateGoal(partial.id, partial);
@@ -157,6 +161,7 @@ export default function HomeScreen() {
     }
     handleCloseGoalModal();
   };
+
   const handleDeleteGoal = (goalId: string) => {
     deleteGoal(goalId);
     handleCloseGoalModal();
@@ -164,12 +169,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.bg }]}
+      style={[styles.safeArea, { backgroundColor: theme.bg }]}
       edges={["top", "left", "right"]}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -187,22 +193,10 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Daily Quote - smaller with reduced top padding and tighter spacing */}
-        <View
-          style={[
-            styles.quoteCard,
-            { backgroundColor: theme.cardBg, paddingTop: 4, paddingBottom: 6, paddingHorizontal: 6, minHeight: 24, marginBottom: 8 }
-          ]}
-        >
-          <Text
-            style={{
-              fontSize: 46,
-              marginBottom: -8,
-              color: PALETTE.goldSoft,
-              fontWeight: "bold",
-            }}
-          >"</Text>
-          <Text style={[styles.quoteText, { color: PALETTE.goldSoft, fontSize: 13 }]}>
+        {/* Daily Quote */}
+        <View style={[styles.quoteCard, { backgroundColor: theme.cardBg }]}>
+          <Text style={styles.quoteIcon}>"</Text>
+          <Text style={[styles.quoteText, { color: PALETTE.goldSoft }]}>
             "{dailyQuote.text}"
           </Text>
           <Text style={[styles.author, { color: PALETTE.goldSoft }]}>
@@ -210,35 +204,20 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Habits Completed Today / Progress - larger bottom padding, larger/bold title */}
+        {/* Habits Progress */}
         {habits.length > 0 && (
-          <View
-            style={[
-              styles.progressCard,
-              { backgroundColor: theme.cardBg, height: 80, marginBottom: 10, paddingTop: 8, paddingHorizontal: 8, paddingBottom: 12 }
-            ]}
-          >
-            <Text style={[styles.progressTitle, { color: theme.text, marginBottom: 4 }]}>
+          <View style={[styles.progressCard, { backgroundColor: theme.cardBg }]}>
+            <Text style={[styles.progressTitle, { color: theme.text }]}>
               Habits Completed Today
             </Text>
-            <Text
-              style={[
-                styles.progressNumber,
-                { color: theme.primary, fontSize: 34 },
-              ]}
-            >
+            <Text style={[styles.progressNumber, { color: theme.primary }]}>
               {completedToday}/{habits.length}
             </Text>
           </View>
         )}
 
-        {/* Habits */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: theme.cardBg },
-          ]}
-        >
+        {/* Habits Section */}
+        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Daily Habits
@@ -248,9 +227,9 @@ export default function HomeScreen() {
                 setSelectedHabit(null);
                 setShowAddHabit(true);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.addButton,
-                { backgroundColor: theme.primary },
+                { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 },
               ]}
             >
               <Text style={styles.addButtonText}>+ Add</Text>
@@ -259,20 +238,18 @@ export default function HomeScreen() {
 
           {habits.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text
-                style={[styles.emptyText, { color: theme.textSecondary }]}
-              >
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 No habits yet. Start by adding your first small step!
               </Text>
             </View>
           ) : (
-            habits.map((habit: Habit) => (
+            habits.map((habit) => (
               <HabitItem
                 key={habit.id}
                 habit={habit}
                 date={today}
                 darkMode={darkMode}
-                onToggleDone={handleToggleDone}
+                onToggleDone={handleToggleDone} // Updated Handler
                 onEdit={handleEditHabit}
                 celebrationPhrases={CELEBRATION_PHRASES}
               />
@@ -280,13 +257,8 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Goals */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: theme.cardBg },
-          ]}
-        >
+        {/* Goals Section */}
+        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Goals
@@ -296,9 +268,9 @@ export default function HomeScreen() {
                 setSelectedGoal(null);
                 setShowAddGoal(true);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.addButton,
-                { backgroundColor: theme.primary },
+                { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 },
               ]}
             >
               <Text style={styles.addButtonText}>+ Add</Text>
@@ -307,14 +279,12 @@ export default function HomeScreen() {
 
           {goals.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text
-                style={[styles.emptyText, { color: theme.textSecondary }]}
-              >
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 Set a goal to work towards!
               </Text>
             </View>
           ) : (
-            goals.map((goal: Goal) => (
+            goals.map((goal) => (
               <GoalItem
                 key={goal.id}
                 goal={goal}
@@ -327,23 +297,15 @@ export default function HomeScreen() {
 
         {/* Pro CTA */}
         {!pro && (
-          <View
-            style={[
-              styles.proCard,
-              { backgroundColor: theme.accent },
-            ]}
-          >
-            <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
-            <Text style={styles.proText}>
+          <View style={[styles.proCard, { backgroundColor: theme.accent }]}>
+            <Text style={[styles.proTitle, { color: PALETTE.deepTeal }]}>
+              🌟 Upgrade to Pro
+            </Text>
+            <Text style={[styles.proText, { color: PALETTE.deepTeal }]}>
               Unlock unlimited habits, advanced analytics, and more!
             </Text>
             <Pressable style={styles.proButton}>
-              <Text
-                style={[
-                  styles.proButtonText,
-                  { color: PALETTE.deepTeal },
-                ]}
-              >
+              <Text style={[styles.proButtonText, { color: theme.accent }]}>
                 Learn More
               </Text>
             </Pressable>
@@ -351,7 +313,7 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Habit Modal (add/edit) */}
+      {/* Modals */}
       <AddHabitModal
         visible={showAddHabit}
         onClose={handleCloseHabitModal}
@@ -361,7 +323,6 @@ export default function HomeScreen() {
         onDelete={handleDeleteHabit}
       />
 
-      {/* Goal Modal (add/edit) */}
       <AddGoalModal
         visible={showAddGoal}
         onClose={handleCloseGoalModal}
@@ -375,21 +336,23 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  safeArea: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   title: { fontSize: 32, fontWeight: "bold" },
   subtitle: { fontSize: 14, marginTop: 4 },
+  
+  // Quote Card
   quoteCard: {
-    padding: 8,
-    minHeight: 38,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 16,
-    marginBottom: 8,
+    marginBottom: 16,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -397,49 +360,55 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  quoteIcon: { fontSize: 46, marginBottom: 0, color: PALETTE.goldSoft },
+  quoteIcon: {
+    fontSize: 46,
+    lineHeight: 46,
+    marginTop: -10,
+    marginBottom: -10,
+    color: PALETTE.goldSoft,
+    fontWeight: "bold",
+  },
   quoteText: {
-    fontSize: 13,
+    fontSize: 14,
     fontStyle: "italic",
     textAlign: "center",
-    lineHeight: 17,
-    marginBottom: 2,
+    lineHeight: 20,
+    marginBottom: 4,
   },
   author: {
-    fontSize: 11,
+    fontSize: 12,
     fontStyle: "italic",
     textAlign: "center",
-    marginTop: 3,
-    marginBottom: 1,
+    opacity: 0.8,
   },
+
+  // Progress Card
   progressCard: {
-    padding: 8,
+    padding: 16,
     borderRadius: 16,
-    marginBottom: 10,
+    marginBottom: 16,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-    height: 70,
   },
   progressTitle: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 4,
   },
-  progressCircle: {
-    alignItems: "center",
-  },
   progressNumber: {
     fontSize: 34,
     fontWeight: "bold",
   },
+
+  // Section Styles
   section: {
     padding: 12,
     borderRadius: 16,
-    marginBottom: 13,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -450,14 +419,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 9,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "bold",
   },
   addButton: {
-    paddingHorizontal: 13,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 8,
   },
@@ -467,17 +436,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   emptyState: {
-    paddingVertical: 28,
+    paddingVertical: 30,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: "center",
+    opacity: 0.7,
   },
+
+  // Pro Card
   proCard: {
-    padding: 18,
+    padding: 20,
     borderRadius: 16,
-    marginBottom: 14,
+    marginBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -485,26 +457,25 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   proTitle: {
-    fontSize: 21,
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: 7,
+    marginBottom: 8,
   },
   proText: {
-    fontSize: 13,
-    color: "#FFF",
+    fontSize: 14,
     opacity: 0.9,
-    marginBottom: 15,
+    marginBottom: 16,
+    lineHeight: 20,
   },
   proButton: {
     backgroundColor: "#FFFFFF",
-    paddingVertical: 9,
-    paddingHorizontal: 17,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 8,
     alignSelf: "flex-start",
   },
   proButtonText: {
     fontWeight: "bold",
-    fontSize: 13,
+    fontSize: 14,
   },
 });
