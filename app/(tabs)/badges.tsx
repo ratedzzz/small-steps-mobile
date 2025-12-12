@@ -107,15 +107,16 @@ export default function BadgesTab() {
   const theme = darkMode ? DARK : LIGHT;
   
   // Get real data from your store
-  const { habits = [], goals = [], badges = [] } = useApp();
+// 1. Extract entries from the store
+const { habits = [], goals = [], entries = [], badges = [] } = useApp();
 
+// 2. Pass entries into evalBadges
+const processedBadges = useMemo(() => {
+  return evalBadges(habits, goals, entries, badges); 
+}, [habits, goals, entries, badges]);
   // CALCULATE BADGES LIVE
   // We pass the raw data into evalBadges to get the latest status including icons
-  const processedBadges = useMemo(() => {
-    // Note: If you have a 'journalEntries' array in your store, pass it here too!
-    // For now I passed [] for entries as I didn't see it in your previous snippet.
-    return evalBadges(habits, goals, [], badges);
-  }, [habits, goals, badges]);
+ 
 
   const unlockedCount = processedBadges.filter(b => b.unlockedAt).length;
   const totalCount = processedBadges.length;
