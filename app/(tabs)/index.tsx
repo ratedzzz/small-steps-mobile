@@ -9,12 +9,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useApp } from "../../src/store";
-import { Habit, Goal } from "../../src/types";
 import AddGoalModal from "../../src/components/AddGoalModal";
 import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
+import { useApp } from "../../src/store";
+import { Goal, Habit } from "../../src/types";
 
 // --- TYPES ---
 interface StoreData {
@@ -60,16 +60,34 @@ const DARK = {
 // --- CONTENT ---
 const quotes = [
   { text: "Small steps lead to big changes.", author: "Fred DeVito" },
-  { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
-  { text: "Success is the sum of small efforts, repeated day-in and day-out.", author: "Robert Collier" },
+  {
+    text: "The journey of a thousand miles begins with one step.",
+    author: "Lao Tzu",
+  },
+  {
+    text: "Success is the sum of small efforts, repeated day-in and day-out.",
+    author: "Robert Collier",
+  },
   { text: "Little by little, one travels far.", author: "J.R.R. Tolkien" },
   { text: "Consistency is more important than perfection.", author: "Unknown" },
 ];
 
 const CELEBRATION_PHRASES = [
-  "Great Job!", "Way To Go!", "You Did It!", "Awesome!", "Fantastic!",
-  "Amazing!", "Well Done!", "Keep It Up!", "You Rock!", "Crushing It!",
-  "On Fire!", "Unstoppable!", "Nailed It!", "Perfect!", "Incredible!",
+  "Great Job!",
+  "Way To Go!",
+  "You Did It!",
+  "Awesome!",
+  "Fantastic!",
+  "Amazing!",
+  "Well Done!",
+  "Keep It Up!",
+  "You Rock!",
+  "Crushing It!",
+  "On Fire!",
+  "Unstoppable!",
+  "Nailed It!",
+  "Perfect!",
+  "Incredible!",
 ];
 
 export default function HomeScreen() {
@@ -206,7 +224,9 @@ export default function HomeScreen() {
 
         {/* Habits Progress */}
         {habits.length > 0 && (
-          <View style={[styles.progressCard, { backgroundColor: theme.cardBg }]}>
+          <View
+            style={[styles.progressCard, { backgroundColor: theme.cardBg }]}
+          >
             <Text style={[styles.progressTitle, { color: theme.text }]}>
               Habits Completed Today
             </Text>
@@ -346,7 +366,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 32, fontWeight: "bold" },
   subtitle: { fontSize: 14, marginTop: 4 },
-  
+
   // Quote Card
   quoteCard: {
     paddingVertical: 12,
