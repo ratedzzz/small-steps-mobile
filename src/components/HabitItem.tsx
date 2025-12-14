@@ -17,8 +17,9 @@ interface HabitItemProps {
 const { width, height } = Dimensions.get("window");
 
 // Check if habit is completed today
-const isHabitCompleted = (habit: Habit, date: string) =>
-  habit.doneDate === date;
+const isHabitCompleted = (habit: Habit, date: string) => {
+  return habit.completedDates?.includes(date) || habit.doneDate === date;
+};
 
 export default function HabitItem({
   habit,

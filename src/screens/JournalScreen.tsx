@@ -3,6 +3,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, Pressable, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, newId } from '../store';
+import { getLocalDate } from '../utils';
+
+
 
 const PALETTE = {
   tealBg: '#15292E',
@@ -23,7 +26,7 @@ export default function JournalScreen() {
   };
 
   const { entries = [], upsertEntry } = useApp();
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => getLocalDate(), []);
   const [journalText, setJournalText] = useState('');
   const todaysJournal = useMemo(
     () => entries.find((e: any) => e?.date === today && !e?.habitId && !e?.goalId),

@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // Import your existing Journal screen logic/UI
 import JournalScreen from "../../src/screens/JournalScreen";
 
+
 // Light/Dark theme tokens – keep in sync with calendar.tsx
 const lightTheme = {
   bg: "#F8FAFC", // soft light background

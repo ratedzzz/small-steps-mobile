@@ -15,6 +15,8 @@ import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
 import { useApp } from "../../src/store";
 import { Goal, Habit } from "../../src/types";
+import { getLocalDate } from "../../src/utils"; 
+
 
 // --- TYPES ---
 interface StoreData {
@@ -117,7 +119,7 @@ export default function HomeScreen() {
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const today = useMemo(() => getLocalDate(), []);
 
   const completedToday = useMemo(() => {
     // Check if the completedDates array includes today

@@ -8,6 +8,8 @@ import type { DateData } from 'react-native-calendars';
 // Import your store and types
 import { useApp } from '../../src/store';
 import { Habit, Goal, JournalEntry } from '../../src/types';
+import { getLocalDate } from "../../src/utils";
+
 
 // --- THEME ---
 const PALETTE = {
@@ -40,7 +42,7 @@ export default function CalendarTab() {
 
   const { entries = [], habits = [], goals = [] } = useApp();
   
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => getLocalDate(), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
   // --- 1. CALCULATE MARKED DATES (CUSTOM SHAPES) ---
