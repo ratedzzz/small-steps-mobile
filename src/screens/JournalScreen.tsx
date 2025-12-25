@@ -1,11 +1,17 @@
-// src/screens/JournalScreen.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Pressable, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  ScrollView, 
+  Pressable, 
+  useColorScheme,
+  KeyboardAvoidingView, // <--- NEW
+  Platform              // <--- NEW
+} from 'react-native';
 import { useApp, newId } from '../store';
 import { getLocalDate } from '../utils';
-
-
 
 const PALETTE = {
   tealBg: '#15292E',
@@ -26,8 +32,11 @@ export default function JournalScreen() {
   };
 
   const { entries = [], upsertEntry } = useApp();
+  // Ensure we use the local date so the entry saves for "Today"
   const today = useMemo(() => getLocalDate(), []);
+  
   const [journalText, setJournalText] = useState('');
+  
   const todaysJournal = useMemo(
     () => entries.find((e: any) => e?.date === today && !e?.habitId && !e?.goalId),
     [entries, today]
@@ -46,8 +55,15 @@ export default function JournalScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    // Replaced SafeAreaView with KeyboardAvoidingView to fix keyboard blocking text
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.bg }]}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
           <Text style={styles.title}>Daily Journal</Text>
           <Text style={styles.subtitle}>
@@ -58,7 +74,9 @@ export default function JournalScreen() {
               day: 'numeric'
             })}
           </Text>
+          
           <Text style={styles.promptTitle}>How are you feeling about your progress?</Text>
+          
           <TextInput
             style={[
               styles.journalInput,
@@ -69,11 +87,20 @@ export default function JournalScreen() {
             onChangeText={setJournalText}
             placeholder="Reflect on your habits, challenges, and victories..."
             placeholderTextColor={PALETTE.textLight}
+            textAlignVertical="top" // <--- CRITICAL FIX FOR ANDROID
           />
-          <Pressable style={[styles.saveButton, { backgroundColor: PALETTE.accent }]} onPress={saveJournal}>
+          
+          <Pressable 
+            style={({pressed}) => [
+              styles.saveButton, 
+              { backgroundColor: PALETTE.accent, opacity: pressed ? 0.8 : 1 }
+            ]} 
+            onPress={saveJournal}
+          >
             <Text style={styles.saveButtonText}>Save Entry</Text>
           </Pressable>
         </View>
+
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
           <Text style={styles.promptTitle}>Prompts to consider:</Text>
           <Text style={styles.promptText}>
@@ -85,7 +112,7 @@ export default function JournalScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -111,7 +138,9 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     minHeight: 250,
-    marginBottom: 16
+    marginBottom: 16,
+    // Ensure text starts at top on all platforms
+    textAlignVertical: 'top', 
   },
   saveButton: {
     padding: 16,

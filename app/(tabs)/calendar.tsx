@@ -1,15 +1,17 @@
-
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import type { DateData } from 'react-native-calendars';
 
-// Import your store and types
+// Import Store, Types, and Utils
 import { useApp } from '../../src/store';
 import { Habit, Goal, JournalEntry } from '../../src/types';
-import { getLocalDate } from "../../src/utils";
+import { getLocalDate } from '../../src/utils'; // <--- The Timezone Fix
 
+// Import Modals for Interactivity
+import AddHabitModal from '../../src/components/AddHabitModal';
+import AddGoalModal from '../../src/components/AddGoalModal';
 
 // --- THEME ---
 const PALETTE = {
@@ -40,16 +42,33 @@ export default function CalendarTab() {
   const darkMode = colorScheme === 'dark';
   const theme = darkMode ? DARK : LIGHT;
 
-  const { entries = [], habits = [], goals = [] } = useApp();
+  const { 
+    entries = [], 
+    habits = [], 
+    goals = [],
+    updateHabit,
+    deleteHabit,
+    updateGoal,
+    deleteGoal,
+    addHabit, // Needed for Modal props
+    addGoal   // Needed for Modal props
+  } = useApp();
   
+  // FIXED: Use local date so "Today" is accurate to the user
   const today = useMemo(() => getLocalDate(), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
+
+  // --- MODAL STATE ---
+  const [showHabitModal, setShowHabitModal] = useState(false);
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
   // --- 1. CALCULATE MARKED DATES (CUSTOM SHAPES) ---
   const markedDates = useMemo(() => {
     const marks: Record<string, any> = {};
 
-    // Helper: Ensure date object exists
     const initDate = (date: string) => {
       if (!marks[date]) {
         marks[date] = { 
@@ -61,39 +80,37 @@ export default function CalendarTab() {
 
     // A. Habits -> DOTS
     habits.forEach((habit: Habit) => {
-      const datesToCheck = (habit as any).completedDates || (habit.doneDate ? [habit.doneDate] : []);
+      // Check the history array primarily
+      const datesToCheck = habit.completedDates || (habit.doneDate ? [habit.doneDate] : []);
       datesToCheck.forEach((dateString: string) => {
         initDate(dateString);
-        // Add a dot for the habit
-        marks[dateString].dots.push({ key: `habit-${habit.id}`, color: habit.color });
+        // Avoid duplicate dots of the same color
+        const exists = marks[dateString].dots.some((d: any) => d.key === `habit-${habit.id}`);
+        if (!exists) {
+          marks[dateString].dots.push({ key: `habit-${habit.id}`, color: habit.color });
+        }
       });
     });
 
-    // B. Goals -> SQUARES (Start & End only)
+    // B. Goals -> SQUARES
     goals.forEach((goal: Goal) => {
-      // Start Date
-      const start = (goal as any).createdAt ? new Date((goal as any).createdAt).toISOString().split('T')[0] : today;
-      // End Date (if exists)
+      const start = goal.createdAt ? goal.createdAt.split('T')[0] : today;
       const end = goal.dueDate;
 
-      // Draw START shape (Left Rounded)
       initDate(start);
       marks[start].customStyles.container = {
         backgroundColor: goal.color,
         borderRadius: 0,
         borderTopLeftRadius: 8,
         borderBottomLeftRadius: 8,
-        borderTopRightRadius: 2, // Slight curve, mostly flat
+        borderTopRightRadius: 2,
         borderBottomRightRadius: 2,
-        width: '100%', // Fills the cell
+        width: '100%',
       };
       marks[start].customStyles.text = { color: 'white', fontWeight: 'bold' };
 
-      // Draw END shape (Right Rounded)
       if (end) {
         initDate(end);
-        
-        // If start == end, make it a full rounded square
         if (start === end) {
           marks[end].customStyles.container = {
             backgroundColor: goal.color,
@@ -101,7 +118,6 @@ export default function CalendarTab() {
             width: '100%',
           };
         } else {
-          // Standard End Shape
           marks[end].customStyles.container = {
             backgroundColor: goal.color,
             borderRadius: 0,
@@ -118,47 +134,67 @@ export default function CalendarTab() {
 
     // C. Selection Highlight
     initDate(selectedDate);
-    // We merge selection style on top of existing styles
     const existingContainer = marks[selectedDate].customStyles.container;
     marks[selectedDate].customStyles.container = {
       ...existingContainer,
       borderWidth: 2,
-      borderColor: PALETTE.gold, // Gold border for selection
+      borderColor: PALETTE.gold,
     };
 
     return marks;
-  }, [entries, habits, goals, selectedDate, darkMode]);
+  }, [habits, goals, selectedDate, darkMode, today]);
 
   // --- 2. FILTER DATA FOR SELECTED DAY ---
   const activeItemsOnDay = useMemo(() => {
     // Habits
     const dayHabits = habits.filter(h => {
-      const dates = (h as any).completedDates || [];
+      const dates = h.completedDates || [];
       return dates.includes(selectedDate);
     });
 
-    // Goals (Is it Start, End, or Active?)
+    // Goals
     const dayGoals = goals.filter(g => {
-      const start = (g as any).createdAt ? new Date((g as any).createdAt).toISOString().split('T')[0] : today;
+      const start = g.createdAt ? g.createdAt.split('T')[0] : today;
       const end = g.dueDate;
-
       const isStart = start === selectedDate;
       const isEnd = end === selectedDate;
       
-      // We also check if it's "Active" (between start/end) even if we don't draw it
       const startD = new Date(start);
       const endD = end ? new Date(end) : new Date(8640000000000000);
       const check = new Date(selectedDate);
       const isActive = check >= startD && check <= endD;
 
-      if (isStart) return true;
-      if (isEnd) return true;
-      if (isActive) return true; 
-      return false;
+      return isStart || isEnd || isActive;
     });
 
-    return { dayHabits, dayGoals };
-  }, [selectedDate, habits, goals]);
+    // Journal Entry for this day (General Note)
+    const journalEntry = entries.find(e => e.date === selectedDate && !e.habitId);
+
+    return { dayHabits, dayGoals, journalEntry };
+  }, [selectedDate, habits, goals, entries, today]);
+
+  // --- HANDLERS ---
+  const handleHabitClick = (h: Habit) => {
+    setSelectedHabit(h);
+    setShowHabitModal(true);
+  };
+
+  const handleGoalClick = (g: Goal) => {
+    setSelectedGoal(g);
+    setShowGoalModal(true);
+  };
+
+  const handleSaveHabit = (partial: Partial<Habit>) => {
+    if (partial.id) updateHabit(partial.id, partial);
+    else addHabit(partial);
+    setShowHabitModal(false);
+  };
+
+  const handleSaveGoal = (partial: Partial<Goal>) => {
+    if (partial.id) updateGoal(partial.id, partial);
+    else addGoal(partial);
+    setShowGoalModal(false);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -169,7 +205,7 @@ export default function CalendarTab() {
           <Calendar
             current={selectedDate}
             onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-            markingType={'custom'} // <--- CRITICAL CHANGE
+            markingType={'custom'}
             markedDates={markedDates}
             theme={{
               backgroundColor: theme.cardBg,
@@ -183,7 +219,7 @@ export default function CalendarTab() {
           />
         </View>
 
-        {/* DETAILS */}
+        {/* DETAILS SECTION */}
         <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {new Date(selectedDate).toLocaleDateString(undefined, {
@@ -191,39 +227,61 @@ export default function CalendarTab() {
             })}
           </Text>
 
-          {activeItemsOnDay.dayHabits.length === 0 && activeItemsOnDay.dayGoals.length === 0 && (
+          {activeItemsOnDay.dayHabits.length === 0 && 
+           activeItemsOnDay.dayGoals.length === 0 && 
+           !activeItemsOnDay.journalEntry && (
             <Text style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
               No activity recorded.
             </Text>
           )}
 
-          {/* Habits */}
+          {/* Habits List */}
           {activeItemsOnDay.dayHabits.map(h => (
-            <View key={h.id} style={styles.itemRow}>
-              {/* Habits = Circles */}
+            <Pressable 
+              key={h.id} 
+              style={({pressed}) => [styles.itemRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => handleHabitClick(h)}
+            >
               <View style={[styles.dot, { backgroundColor: h.color }]} />
-              <Text style={[styles.itemText, { color: theme.text }]}>Completed: {h.name}</Text>
-            </View>
+              <Text style={[styles.itemText, { color: theme.text }]}>
+                Completed: <Text style={{fontWeight: 'bold'}}>{h.name}</Text>
+              </Text>
+            </Pressable>
           ))}
 
-          {/* Goals */}
+          {/* Goals List */}
           {activeItemsOnDay.dayGoals.map(g => {
-            const start = (g as any).createdAt ? new Date((g as any).createdAt).toISOString().split('T')[0] : today;
+            const start = g.createdAt ? g.createdAt.split('T')[0] : today;
             let label = "Active Goal";
-            if (start === selectedDate) label = "START: Goal";
-            if (g.dueDate === selectedDate) label = "END: Goal";
+            if (start === selectedDate) label = "START";
+            if (g.dueDate === selectedDate) label = "DUE";
 
             return (
-              <View key={g.id} style={styles.itemRow}>
-                 {/* Goals = Squares */}
+              <Pressable 
+                key={g.id} 
+                style={({pressed}) => [styles.itemRow, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => handleGoalClick(g)}
+              >
                 <View style={[styles.square, { backgroundColor: g.color }]} />
-                <Text style={[styles.itemText, { color: theme.text }]}>{label}: {g.title}</Text>
-              </View>
+                <Text style={[styles.itemText, { color: theme.text }]}>
+                  {label}: <Text style={{fontWeight: 'bold'}}>{g.title}</Text>
+                </Text>
+              </Pressable>
             );
           })}
         </View>
 
-        {/* LEGEND (Split) */}
+        {/* JOURNAL PREVIEW */}
+        {activeItemsOnDay.journalEntry && (
+          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.textSecondary, borderWidth: 0.5 }]}>
+            <Text style={[styles.legendTitle, { color: theme.textSecondary }]}>Journal Entry</Text>
+            <Text style={[styles.itemText, { color: theme.text, fontStyle: 'italic' }]} numberOfLines={2}>
+              "{activeItemsOnDay.journalEntry.text}"
+            </Text>
+          </View>
+        )}
+
+        {/* LEGEND */}
         <View style={[styles.card, { backgroundColor: theme.cardBg, marginTop: 10 }]}>
           <Text style={[styles.legendTitle, { color: theme.textSecondary }]}>Habits (Dots)</Text>
           <View style={styles.legendGrid}>
@@ -249,6 +307,25 @@ export default function CalendarTab() {
         </View>
 
       </ScrollView>
+
+      {/* EDIT MODALS */}
+      <AddHabitModal
+        visible={showHabitModal}
+        onClose={() => setShowHabitModal(false)}
+        darkMode={darkMode}
+        habit={selectedHabit}
+        onSave={handleSaveHabit}
+        onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }}
+      />
+      
+      <AddGoalModal
+        visible={showGoalModal}
+        onClose={() => setShowGoalModal(false)}
+        darkMode={darkMode}
+        goal={selectedGoal}
+        onSave={handleSaveGoal}
+        onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }}
+      />
     </SafeAreaView>
   );
 }
@@ -273,7 +350,8 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12, // Increased spacing slightly
+    paddingVertical: 4, // Added touch target area
   },
   dot: {
     width: 10,
@@ -284,7 +362,7 @@ const styles = StyleSheet.create({
   square: {
     width: 10,
     height: 10,
-    borderRadius: 2, // Slightly rounded square
+    borderRadius: 2,
     marginRight: 10,
   },
   itemText: {
@@ -302,13 +380,13 @@ const styles = StyleSheet.create({
   legendGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    columnGap: 16, // FIXED: Adds spacing between columns
+    rowGap: 8,     // FIXED: Adds spacing between rows
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '45%',
-    marginBottom: 4,
+    width: '45%', // Keeps them 2-per-row, but Gap handles the spacing now
   },
   legendDot: {
     width: 12,
@@ -324,5 +402,6 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 13,
+    flexShrink: 1, // Ensures text truncates if too long
   }
 });
