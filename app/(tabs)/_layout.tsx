@@ -1,48 +1,17 @@
-// app/(tabs)/_layout.tsx
 import React, { useEffect } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../src/store';
+// UPDATED IMPORT:
+import { APP_THEME, MOUNTAIN_PALETTE } from '../../src/theme';
 import {
-  setupNotificationHandler,
-  getPushTokenSafely,
   scheduleDailyLocalNotification,
   cancelAll,
 } from '../../src/notifications';
 
-const PALETTE = {
-  deepTeal: '#15292E',
-  teal: '#074047',
-  aqua: '#1C8585',
-  mint: '#1DA27E',
-  gold: '#E0A800',
-  goldSoft: '#F1C453',
-  goldPale: '#F6D88B',
-} as const;
-
-const LIGHT = {
-  bg: '#FFF9EC',
-  cardBg: '#FFFFFF',
-  textLight: '#15292E',
-  textSecondary: '#475569',
-  primary: PALETTE.mint,
-  accent: PALETTE.goldSoft,
-  border: '#E5E7EB',
-} as const;
-
-const DARK = {
-  bg: PALETTE.deepTeal,
-  cardBg: PALETTE.teal,
-  textLight: '#EAF7F6',
-  textSecondary: '#9FB8B6',
-  primary: PALETTE.mint,
-  accent: PALETTE.goldSoft,
-  border: '#2A3C40',
-} as const;
-
-// Parses reminderTime string for notification scheduling
+// Helper to parse time strings
 function parseTimeString(input?: string): { hour: number; minute: number } | null {
   if (!input) return null;
   const s = input.toUpperCase().trim();
@@ -58,26 +27,30 @@ function parseTimeString(input?: string): { hour: number; minute: number } | nul
 }
 
 function TabsInner() {
-  const darkMode = useColorScheme() === 'dark';
-  const theme = darkMode ? DARK : LIGHT;
-  const GOLD = theme.accent;
-  const GOLD_INACTIVE = 'rgba(241, 196, 83, 0.75)';
+  // UPDATED: Use APP_THEME constants
+  const NAVY_BG = APP_THEME.solidBackground; 
+  const ACTIVE_PEACH = MOUNTAIN_PALETTE[0]; 
+  const INACTIVE_BLUE = "#318fb5"; 
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+    <View style={{ flex: 1, backgroundColor: NAVY_BG }}>
       <Tabs
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: GOLD,
-          tabBarInactiveTintColor: GOLD_INACTIVE,
+          // Tab Bar Colors
+          tabBarActiveTintColor: ACTIVE_PEACH,
+          tabBarInactiveTintColor: INACTIVE_BLUE,
           tabBarStyle: {
-            backgroundColor: theme.cardBg,
-            borderTopColor: theme.border,
+            backgroundColor: NAVY_BG,
+            borderTopColor: '#005086', 
             borderTopWidth: 1,
             paddingBottom: 20,
-            height: 76,
+            height: 80, 
+            elevation: 0, 
+            shadowOpacity: 0, 
           },
-          tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
+          tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+          // Icons
           tabBarIcon: ({ color, size, focused }) => {
             let icon: any = 'home-outline';
             if (route.name === 'index') icon = focused ? 'home' : 'home-outline';
@@ -100,35 +73,32 @@ function TabsInner() {
 }
 
 export default function RootLayout() {
-  const darkMode = useColorScheme() === 'dark';
-  const theme = darkMode ? DARK : LIGHT;
   const { habits = [] } = useApp();
 
+  // Schedule reminders
   useEffect(() => {
     (async () => {
-      await setupNotificationHandler();
-      await getPushTokenSafely();
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      await cancelAll();
-      for (const habit of habits) {
-        if (!habit?.reminderTime) continue;
-        const t = parseTimeString(habit.reminderTime);
-        if (!t) continue;
-        await scheduleDailyLocalNotification(t.hour, t.minute, {
-          title: 'Small Steps Reminder 🌟',
-          body: `Time for: ${habit.name}`,
-        });
+      try {
+        await cancelAll();
+        for (const habit of habits) {
+          if (!habit?.reminderTime) continue;
+          const t = parseTimeString(habit.reminderTime);
+          if (!t) continue;
+          await scheduleDailyLocalNotification(t.hour, t.minute, {
+            title: 'Small Steps Reminder 🌟',
+            body: `Time for: ${habit.name}`,
+          });
+        }
+      } catch (e) {
+        console.log("Notification scheduling error:", e);
       }
     })();
   }, [habits]);
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      {/* Ensure the deep background is set here too */}
+      <View style={{ flex: 1, backgroundColor: APP_THEME.solidBackground }}>
         <TabsInner />
       </View>
     </SafeAreaProvider>

@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -9,14 +8,16 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import AddGoalModal from "../../src/components/AddGoalModal";
 import AddHabitModal from "../../src/components/AddHabitModal";
 import GoalItem from "../../src/components/GoalItem";
 import HabitItem from "../../src/components/HabitItem";
 import { useApp } from "../../src/store";
 import { Goal, Habit } from "../../src/types";
-import { getLocalDate } from "../../src/utils"; 
-
+import { getLocalDate } from "../../src/utils";
+// UPDATED IMPORT:
+import { APP_THEME } from "../../src/theme"; 
 
 // --- TYPES ---
 interface StoreData {
@@ -24,7 +25,7 @@ interface StoreData {
   goals: Goal[];
   pro: boolean;
   updateHabit: (id: string, data: Partial<Habit>) => void;
-  toggleHabit: (id: string, date: string) => void; // <--- NEW
+  toggleHabit: (id: string, date: string) => void;
   deleteHabit: (id: string) => void;
   updateGoal: (id: string, data: Partial<Goal>) => void;
   deleteGoal: (id: string) => void;
@@ -32,76 +33,28 @@ interface StoreData {
   addGoal: (data: Partial<Goal>) => void;
 }
 
-// --- THEME ---
-const PALETTE = {
-  deepTeal: "#15292E",
-  teal: "#074047",
-  aqua: "#1C8585",
-  mint: "#1DA27E",
-  goldSoft: "#F1C453",
-} as const;
-
-const LIGHT = {
-  bg: "#FFF9EC",
-  cardBg: "#FFFFFF",
-  text: "#15292E",
-  textSecondary: "#475569",
-  primary: PALETTE.mint,
-  accent: PALETTE.goldSoft,
-} as const;
-
-const DARK = {
-  bg: PALETTE.deepTeal,
-  cardBg: PALETTE.teal,
-  text: "#EAF7F6",
-  textSecondary: "#9FB8B6",
-  primary: PALETTE.mint,
-  accent: PALETTE.goldSoft,
-} as const;
-
 // --- CONTENT ---
 const quotes = [
   { text: "Small steps lead to big changes.", author: "Fred DeVito" },
-  {
-    text: "The journey of a thousand miles begins with one step.",
-    author: "Lao Tzu",
-  },
-  {
-    text: "Success is the sum of small efforts, repeated day-in and day-out.",
-    author: "Robert Collier",
-  },
+  { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+  { text: "Success is the sum of small efforts.", author: "Robert Collier" },
   { text: "Little by little, one travels far.", author: "J.R.R. Tolkien" },
   { text: "Consistency is more important than perfection.", author: "Unknown" },
 ];
 
 const CELEBRATION_PHRASES = [
-  "Great Job!",
-  "Way To Go!",
-  "You Did It!",
-  "Awesome!",
-  "Fantastic!",
-  "Amazing!",
-  "Well Done!",
-  "Keep It Up!",
-  "You Rock!",
-  "Crushing It!",
-  "On Fire!",
-  "Unstoppable!",
-  "Nailed It!",
-  "Perfect!",
-  "Incredible!",
+  "Great Job!", "Way To Go!", "You Did It!", "Awesome!", "Fantastic!",
 ];
 
 export default function HomeScreen() {
   const darkMode = useColorScheme() === "dark";
-  const theme = darkMode ? DARK : LIGHT;
 
   const {
     habits = [],
     goals = [],
     pro,
     updateHabit,
-    toggleHabit, // <--- Destructured here
+    toggleHabit,
     deleteHabit,
     updateGoal,
     deleteGoal,
@@ -122,12 +75,10 @@ export default function HomeScreen() {
   const today = useMemo(() => getLocalDate(), []);
 
   const completedToday = useMemo(() => {
-    // Check if the completedDates array includes today
     return habits.filter((h) => h.completedDates?.includes(today)).length;
   }, [habits, today]);
 
   const handleToggleDone = (habitId: string) => {
-    // This calls the new store action to toggle the date in the array
     toggleHabit(habitId, today);
   };
 
@@ -188,316 +139,292 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.bg }]}
-      edges={["top", "left", "right"]}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.title, { color: theme.text }]}>
-              Small Steps
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "short",
-                day: "numeric",
-              })}
-            </Text>
-          </View>
-        </View>
-
-        {/* Daily Quote */}
-        <View style={[styles.quoteCard, { backgroundColor: theme.cardBg }]}>
-          <Text style={styles.quoteIcon}>"</Text>
-          <Text style={[styles.quoteText, { color: PALETTE.goldSoft }]}>
-            "{dailyQuote.text}"
-          </Text>
-          <Text style={[styles.author, { color: PALETTE.goldSoft }]}>
-            — {dailyQuote.author}
-          </Text>
-        </View>
-
-        {/* Habits Progress */}
-        {habits.length > 0 && (
-          <View
-            style={[styles.progressCard, { backgroundColor: theme.cardBg }]}
-          >
-            <Text style={[styles.progressTitle, { color: theme.text }]}>
-              Habits Completed Today
-            </Text>
-            <Text style={[styles.progressNumber, { color: theme.primary }]}>
-              {completedToday}/{habits.length}
-            </Text>
-          </View>
-        )}
-
-        {/* Habits Section */}
-        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Daily Habits
-            </Text>
-            <Pressable
-              onPress={() => {
-                setSelectedHabit(null);
-                setShowAddHabit(true);
-              }}
-              style={({ pressed }) => [
-                styles.addButton,
-                { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 },
-              ]}
-            >
-              <Text style={styles.addButtonText}>+ Add</Text>
-            </Pressable>
-          </View>
-
-          {habits.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                No habits yet. Start by adding your first small step!
+    // UPDATED PROP: colors={APP_THEME.mainGradient}
+    <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.title, { color: "#001244" }]}>
+                Small Steps
+              </Text>
+              <Text style={[styles.subtitle, { color: "#005086" }]}>
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })}
               </Text>
             </View>
-          ) : (
-            habits.map((habit) => (
-              <HabitItem
-                key={habit.id}
-                habit={habit}
-                date={today}
-                darkMode={darkMode}
-                onToggleDone={handleToggleDone} // Updated Handler
-                onEdit={handleEditHabit}
-                celebrationPhrases={CELEBRATION_PHRASES}
-              />
-            ))
-          )}
-        </View>
-
-        {/* Goals Section */}
-        <View style={[styles.section, { backgroundColor: theme.cardBg }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Goals
-            </Text>
-            <Pressable
-              onPress={() => {
-                setSelectedGoal(null);
-                setShowAddGoal(true);
-              }}
-              style={({ pressed }) => [
-                styles.addButton,
-                { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 },
-              ]}
-            >
-              <Text style={styles.addButtonText}>+ Add</Text>
-            </Pressable>
           </View>
 
-          {goals.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                Set a goal to work towards!
+          {/* Daily Quote - Glass Effect */}
+          <View style={styles.glassCard}>
+            <Text style={styles.quoteIcon}>"</Text>
+            <Text style={styles.quoteText}>"{dailyQuote.text}"</Text>
+            <Text style={styles.author}>— {dailyQuote.author}</Text>
+          </View>
+
+          {/* Habits Progress - Glass Effect */}
+          {habits.length > 0 && (
+            <View style={styles.glassCard}>
+              <Text style={styles.progressTitle}>Habits Completed Today</Text>
+              <Text style={styles.progressNumber}>
+                {completedToday}/{habits.length}
               </Text>
             </View>
-          ) : (
-            goals.map((goal) => (
-              <GoalItem
-                key={goal.id}
-                goal={goal}
-                darkMode={darkMode}
-                onEdit={handleEditGoal}
-              />
-            ))
           )}
-        </View>
 
-        {/* Pro CTA */}
-        {!pro && (
-          <View style={[styles.proCard, { backgroundColor: theme.accent }]}>
-            <Text style={[styles.proTitle, { color: PALETTE.deepTeal }]}>
-              🌟 Upgrade to Pro
-            </Text>
-            <Text style={[styles.proText, { color: PALETTE.deepTeal }]}>
-              Unlock unlimited habits, advanced analytics, and more!
-            </Text>
-            <Pressable style={styles.proButton}>
-              <Text style={[styles.proButtonText, { color: theme.accent }]}>
-                Learn More
-              </Text>
-            </Pressable>
+          {/* Habits Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Daily Habits</Text>
+              <Pressable
+                onPress={() => {
+                  setSelectedHabit(null);
+                  setShowAddHabit(true);
+                }}
+                style={({ pressed }) => [
+                  styles.addButton,
+                  { opacity: pressed ? 0.8 : 1 },
+                ]}
+              >
+                <Text style={styles.addButtonText}>+ Add</Text>
+              </Pressable>
+            </View>
+
+            {habits.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  No habits yet. Start by adding your first small step!
+                </Text>
+              </View>
+            ) : (
+              habits.map((habit, index) => (
+                <HabitItem
+                  key={habit.id}
+                  habit={habit}
+                  date={today}
+                  darkMode={darkMode}
+                  onToggleDone={handleToggleDone}
+                  onEdit={handleEditHabit}
+                  celebrationPhrases={CELEBRATION_PHRASES}
+                  index={index}
+                  totalHabits={habits.length}
+                />
+              ))
+            )}
           </View>
-        )}
-      </ScrollView>
 
-      {/* Modals */}
-      <AddHabitModal
-        visible={showAddHabit}
-        onClose={handleCloseHabitModal}
-        darkMode={darkMode}
-        habit={selectedHabit}
-        onSave={handleSaveHabit}
-        onDelete={handleDeleteHabit}
-      />
+          {/* Goals Section - Glass Effect */}
+          <View style={[styles.glassCard, { marginTop: 10 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Goals</Text>
+              <Pressable
+                onPress={() => {
+                  setSelectedGoal(null);
+                  setShowAddGoal(true);
+                }}
+                style={({ pressed }) => [
+                  styles.addButton,
+                  { opacity: pressed ? 0.8 : 1 },
+                ]}
+              >
+                <Text style={styles.addButtonText}>+ Add</Text>
+              </Pressable>
+            </View>
 
-      <AddGoalModal
-        visible={showAddGoal}
-        onClose={handleCloseGoalModal}
-        darkMode={darkMode}
-        goal={selectedGoal}
-        onSave={handleSaveGoal}
-        onDelete={handleDeleteGoal}
-      />
-    </SafeAreaView>
+            {goals.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  Set a goal to work towards!
+                </Text>
+              </View>
+            ) : (
+              goals.map((goal) => (
+                <GoalItem
+                  key={goal.id}
+                  goal={goal}
+                  darkMode={darkMode}
+                  onEdit={handleEditGoal}
+                />
+              ))
+            )}
+          </View>
+
+          {/* Pro CTA */}
+          {!pro && (
+            <View style={styles.proCard}>
+              <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
+              <Text style={styles.proText}>
+                Unlock unlimited habits, advanced analytics, and more!
+              </Text>
+              <Pressable style={styles.proButton}>
+                <Text style={styles.proButtonText}>Learn More</Text>
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Modals */}
+        <AddHabitModal
+          visible={showAddHabit}
+          onClose={handleCloseHabitModal}
+          darkMode={darkMode}
+          habit={selectedHabit}
+          onSave={handleSaveHabit}
+          onDelete={handleDeleteHabit}
+        />
+
+        <AddGoalModal
+          visible={showAddGoal}
+          onClose={handleCloseGoalModal}
+          darkMode={darkMode}
+          goal={selectedGoal}
+          onSave={handleSaveGoal}
+          onDelete={handleDeleteGoal}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
   scrollContent: { padding: 16, paddingBottom: 100 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-  },
-  title: { fontSize: 32, fontWeight: "bold" },
-  subtitle: { fontSize: 14, marginTop: 4 },
-
-  // Quote Card
-  quoteCard: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
     marginBottom: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginTop: 10,
   },
-  quoteIcon: {
-    fontSize: 46,
-    lineHeight: 46,
-    marginTop: -10,
-    marginBottom: -10,
-    color: PALETTE.goldSoft,
-    fontWeight: "bold",
-  },
-  quoteText: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  author: {
-    fontSize: 12,
-    fontStyle: "italic",
-    textAlign: "center",
-    opacity: 0.8,
-  },
+  title: { fontSize: 34, fontWeight: "800", letterSpacing: 0.5 },
+  subtitle: { fontSize: 16, marginTop: 4, fontWeight: "600" },
 
-  // Progress Card
-  progressCard: {
+  glassCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.45)", 
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#001244",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 3,
   },
-  progressTitle: {
+  
+  quoteIcon: {
+    fontSize: 40,
+    lineHeight: 40,
+    color: "#001244",
+    opacity: 0.5,
+    marginBottom: -10,
+  },
+  quoteText: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 6,
+    color: "#001244",
   },
-  progressNumber: {
-    fontSize: 34,
-    fontWeight: "bold",
+  author: {
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.7,
+    color: "#005086",
   },
 
-  // Section Styles
-  section: {
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+    color: "#001244",
+  },
+  progressNumber: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#005086",
+  },
+
+  sectionContainer: {
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+    width: '100%',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#001244",
   },
   addButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: "#001244",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   addButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 13,
+    fontSize: 14,
   },
   emptyState: {
-    paddingVertical: 30,
+    paddingVertical: 20,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: "center",
-    opacity: 0.7,
+    color: "#001244",
+    opacity: 0.6,
   },
 
-  // Pro Card
   proCard: {
+    backgroundColor: "#F1C453",
     padding: 20,
     borderRadius: 16,
     marginBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 12,
+    shadowRadius: 8,
     elevation: 5,
   },
   proTitle: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 8,
+    color: "#001244",
   },
   proText: {
     fontSize: 14,
-    opacity: 0.9,
     marginBottom: 16,
     lineHeight: 20,
+    color: "#001244",
+    opacity: 0.8,
   },
   proButton: {
     backgroundColor: "#FFFFFF",
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: 10,
     alignSelf: "flex-start",
   },
   proButtonText: {
     fontWeight: "bold",
     fontSize: 14,
+    color: "#001244",
   },
 });

@@ -1,18 +1,8 @@
-// src/components/AddHabitModal.tsx
-
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Modal,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, Modal, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { useApp } from "../store";
 import { Habit } from "../types";
+import { MOUNTAIN_PALETTE } from "../theme";
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -23,71 +13,39 @@ interface AddHabitModalProps {
   onDelete?: (habitId: string) => void;
 }
 
-const PALETTE = {
-  deepTeal: "#15292E",
-  teal: "#074047",
-  inputDark: "#052e33",
-  borderDark: "#1C8585",
-  mint: "#1DA27E",
-  red: "#EF4444",
-};
-
 const COLORS = [
   "#1DA27E", "#F1C453", "#3B82F6", "#EC4899",
   "#F97316", "#22C55E", "#FFD600", "#0FF0FC",
   "#FF3DFC", "#82FF58", "#3856FF", "#FC2347"
 ];
 
-const lightTheme = {
-  bg: "#FFF9EC",
-  text: "#15292E",
-  inputBg: "#FFFFFF",
-  border: "#E2E8F0",
+// Force Dark Navy Theme
+const THEME = {
+  bg: MOUNTAIN_PALETTE[4], // #001244
+  text: "#FFFFFF",
+  inputBg: "#002a5c",      // Lighter Navy input
+  border: "#005086",       // Border color
   placeholder: "#94A3B8",
-  primary: PALETTE.mint,
-  cancelBg: PALETTE.teal,
-  cancelText: "#FFFFFF",
+  primary: "#1DA27E",      // Mint Green Button
+  cancelBg: "#334155",
 };
 
-const darkTheme = {
-  bg: PALETTE.teal,
-  text: "#EAF7F6",
-  inputBg: PALETTE.inputDark,
-  border: PALETTE.borderDark,
-  placeholder: "#9FB8B6",
-  primary: PALETTE.mint,
-  cancelBg: PALETTE.deepTeal,
-  cancelText: "#EAF7F6",
-};
-
-// Simple helper: when user types "730" => "7:30"
 function formatTimeInput(raw: string): string {
   const digits = raw.replace(/[^\d]/g, "");
-  if (digits.length <= 2) {
-    return digits;
-  }
+  if (digits.length <= 2) return digits;
   const h = digits.slice(0, digits.length - 2);
   const m = digits.slice(-2);
   return `${parseInt(h, 10)}:${m}`;
 }
 
-export default function AddHabitModal({
-  visible,
-  onClose,
-  darkMode,
-  habit,
-  onSave,
-  onDelete,
-}: AddHabitModalProps) {
+export default function AddHabitModal({ visible, onClose, habit, onSave, onDelete }: AddHabitModalProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#1DA27E");
   const [reminderTime, setReminderTime] = useState("");
   const [amPm, setAmPm] = useState<"AM" | "PM">("AM");
   const { addHabit } = useApp();
-  const theme = darkMode ? darkTheme : lightTheme;
-  const isEditing = habit !== null && habit !== undefined;
+  const isEditing = !!habit;
 
-  // Populate fields when editing or reset when adding
   useEffect(() => {
     if (habit) {
       setName(habit.name);
@@ -96,9 +54,7 @@ export default function AddHabitModal({
         const [hours, minutes] = habit.reminderTime.split(":").map(Number);
         const isPM = hours >= 12;
         const displayHours = hours % 12 || 12;
-        setReminderTime(
-          `${displayHours}:${minutes.toString().padStart(2, "0")}`
-        );
+        setReminderTime(`${displayHours}:${minutes.toString().padStart(2, "0")}`);
         setAmPm(isPM ? "PM" : "AM");
       } else {
         setReminderTime("");
@@ -118,161 +74,83 @@ export default function AddHabitModal({
     if (parts.length < 2) return undefined;
     const [hoursStr, minutesStr] = parts;
     let hours = parseInt(hoursStr, 10);
-    const minutes = minutesStr || "00";
     if (Number.isNaN(hours)) return undefined;
-
-    if (period === "PM" && hours !== 12) {
-      hours += 12;
-    } else if (period === "AM" && hours === 12) {
-      hours = 0;
-    }
-    return `${hours.toString().padStart(2, "0")}:${minutes.padStart(2, "0").slice(0, 2)}`;
+    if (period === "PM" && hours !== 12) hours += 12;
+    else if (period === "AM" && hours === 12) hours = 0;
+    return `${hours.toString().padStart(2, "0")}:${minutesStr.padStart(2, "0").slice(0, 2)}`;
   };
 
   const handleSave = () => {
-    if (!name.trim()) {
-      Alert.alert("Name required", "Please enter a habit name.");
-      return;
-    }
-
+    if (!name.trim()) return Alert.alert("Name required", "Please enter a habit name.");
     const time24 = convertTo24Hour(reminderTime, amPm);
-
-    if (isEditing && onSave && habit) {
-      onSave({
-        id: habit.id,
-        name: name.trim(),
-        color,
-        reminderTime: time24,
-      });
-    } else if (!isEditing) {
-      const created = addHabit({
-        name: name.trim(),
-        color,
-        reminderTime: time24,
-      });
-      if (onSave && created) {
-        onSave(created);
-      }
+    const payload = { name: name.trim(), color, reminderTime: time24 };
+    
+    if (isEditing && onSave && habit) onSave({ id: habit.id, ...payload });
+    else {
+      const created = addHabit(payload);
+      if (onSave && created) onSave(created);
     }
     onClose();
-  };
-
-  const handleDelete = () => {
-    if (isEditing && onDelete && habit) {
-      Alert.alert(
-        "Delete Habit",
-        `Are you sure you want to delete "${habit.name}"?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Delete", style: "destructive", onPress: () => onDelete(habit.id) },
-        ]
-      );
-    }
-  };
-
-  const handleTimeChange = (text: string) => {
-    setReminderTime(formatTimeInput(text));
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={[styles.container, { backgroundColor: THEME.bg }]}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.title, { color: theme.text }]}>
-              {isEditing ? "Edit Habit" : "Add New Habit"}
-            </Text>
+            <Text style={[styles.title, { color: THEME.text }]}>{isEditing ? "Edit Habit" : "New Habit"}</Text>
 
-            {/* NAME */}
-            <Text style={[styles.label, { color: theme.text }]}>Habit Name</Text>
+            <Text style={[styles.label, { color: THEME.text }]}>Name</Text>
             <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Drink water"
-              placeholderTextColor={theme.placeholder}
-              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              value={name} onChangeText={setName} placeholder="Drink water" placeholderTextColor={THEME.placeholder}
+              style={[styles.input, { backgroundColor: THEME.inputBg, borderColor: THEME.border, color: THEME.text }]}
             />
 
-            {/* COLOR PICKER (Identical to Goal) */}
-            <Text style={[styles.label, { color: theme.text }]}>Color</Text>
+            <Text style={[styles.label, { color: THEME.text }]}>Color</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 12 }}>
               {COLORS.map((swatch) => (
                 <Pressable
-                  key={swatch}
-                  onPress={() => setColor(swatch)}
+                  key={swatch} onPress={() => setColor(swatch)}
                   style={{
-                    margin: 8,
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: swatch,
-                    borderWidth: color === swatch ? 3 : 1,
-                    borderColor: color === swatch ? "#333" : "#ccc",
-                    opacity: color === swatch ? 1 : 0.75,
-                    transform: [{ scale: color === swatch ? 1.15 : 1 }]
+                    margin: 8, width: 40, height: 40, borderRadius: 20, backgroundColor: swatch,
+                    borderWidth: color === swatch ? 3 : 1, borderColor: color === swatch ? "#FFF" : "rgba(255,255,255,0.2)",
                   }}
-                  android_ripple={{ color: "#aaa" }}
                 />
               ))}
             </View>
 
-            {/* TIME INPUT */}
-            <Text style={[styles.label, { color: theme.text }]}>Reminder Time (Optional)</Text>
+            <Text style={[styles.label, { color: THEME.text }]}>Reminder Time</Text>
             <View style={styles.timeRow}>
               <TextInput
-                value={reminderTime}
-                onChangeText={handleTimeChange}
-                placeholder="7:30"
-                placeholderTextColor={theme.placeholder}
-                keyboardType="number-pad"
-                style={[styles.timeInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                maxLength={5}
+                value={reminderTime} onChangeText={(t) => setReminderTime(formatTimeInput(t))}
+                placeholder="7:30" placeholderTextColor={THEME.placeholder} keyboardType="number-pad"
+                style={[styles.timeInput, { backgroundColor: THEME.inputBg, borderColor: THEME.border, color: THEME.text }]}
               />
-              <View style={styles.amPmContainer}>
-                <Pressable
-                  onPress={() => setAmPm("AM")}
-                  style={[styles.amPmButton, { backgroundColor: amPm === "AM" ? theme.primary : theme.inputBg, borderColor: theme.border }]}
-                >
-                  <Text style={[styles.amPmText, { color: amPm === "AM" ? "#FFFFFF" : theme.text }]}>AM</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setAmPm("PM")}
-                  style={[styles.amPmButton, { backgroundColor: amPm === "PM" ? theme.primary : theme.inputBg, borderColor: theme.border }]}
-                >
-                  <Text style={[styles.amPmText, { color: amPm === "PM" ? "#FFFFFF" : theme.text }]}>PM</Text>
-                </Pressable>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {["AM", "PM"].map((p) => (
+                  <Pressable key={p} onPress={() => setAmPm(p as any)}
+                    style={[styles.amPmButton, { backgroundColor: amPm === p ? THEME.primary : THEME.inputBg, borderColor: THEME.border }]}>
+                    <Text style={{ color: amPm === p ? "#FFF" : THEME.text, fontWeight: "bold" }}>{p}</Text>
+                  </Pressable>
+                ))}
               </View>
             </View>
 
-            {/* BUTTONS (Unified Style) */}
             <View style={styles.buttonRow}>
-              <Pressable
-                onPress={onClose}
-                style={[styles.button, { backgroundColor: theme.cancelBg }]}
-              >
-                <Text style={[styles.buttonText, { color: theme.cancelText }]}>Cancel</Text>
+              <Pressable onPress={onClose} style={[styles.button, { backgroundColor: THEME.cancelBg }]}>
+                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Cancel</Text>
               </Pressable>
-              <Pressable
-                onPress={handleSave}
-                style={[styles.button, { backgroundColor: theme.primary }]}
-              >
-                <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
-                  {isEditing ? "Save Changes" : "Save Habit"}
-                </Text>
+              <Pressable onPress={handleSave} style={[styles.button, { backgroundColor: THEME.primary }]}>
+                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Save</Text>
               </Pressable>
             </View>
 
-            {/* DELETE BUTTON */}
-            {isEditing && (
-              <Pressable
-                onPress={handleDelete}
-                style={[styles.deleteButton, { backgroundColor: PALETTE.red }]}
-              >
-                <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>Delete Habit</Text>
+            {isEditing && onDelete && habit && (
+              <Pressable onPress={() => onDelete(habit.id)} style={[styles.deleteButton, { backgroundColor: "#EF4444" }]}>
+                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Delete Habit</Text>
               </Pressable>
             )}
-
-            <View style={{ height: 20 }} />
+            <View style={{ height: 40 }} />
           </ScrollView>
         </View>
       </View>
@@ -281,22 +159,15 @@ export default function AddHabitModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" },
+  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.6)", justifyContent: "flex-end" },
   container: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "90%" },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   label: { fontSize: 14, fontWeight: "600", marginBottom: 8, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 8 },
-  
-  // Time specific
   timeRow: { flexDirection: "row", gap: 12, marginBottom: 8, alignItems: "center" },
   timeInput: { flex: 1, borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16 },
-  amPmContainer: { flexDirection: "row", gap: 8 },
-  amPmButton: { paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 1 },
-  amPmText: { fontSize: 16, fontWeight: "bold" },
-
-  // Unified Buttons
+  amPmButton: { paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12, borderWidth: 1 },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 24 },
-  button: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" }, // Added justifyContent
-  buttonText: { fontSize: 16, fontWeight: "bold" },
+  button: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   deleteButton: { padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", marginTop: 12 },
 });
