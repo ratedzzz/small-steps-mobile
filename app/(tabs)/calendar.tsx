@@ -1,306 +1,309 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient'; 
 import { Calendar } from 'react-native-calendars';
 import type { DateData } from 'react-native-calendars';
+import { format, parse } from 'date-fns';
+
 import { useApp } from '../../src/store';
 import { Habit, Goal } from '../../src/types';
 import { getLocalDate } from '../../src/utils';
-// UPDATED IMPORT:
-import { APP_THEME } from '../../src/theme';
+import { APP_THEME } from '../../src/theme'; 
 
 import AddHabitModal from '../../src/components/AddHabitModal';
 import AddGoalModal from '../../src/components/AddGoalModal';
-
-// --- THEME CONFIG ---
-const THEME = {
-  bg: APP_THEME.solidBackground, // UPDATED: Deep Navy
-  cardBg: "#002a5c",       
-  text: "#FFFFFF",
-  textSecondary: "#b0cac7", 
-  gold: "#F1C453",
-};
+import PageFlower from '../../src/components/PageFlower'; // IMPORTED
 
 export default function CalendarTab() {
   const darkMode = true; 
 
-  const { 
-    entries = [], 
-    habits = [], 
-    goals = [],
-    updateHabit,
-    deleteHabit,
-    updateGoal,
-    deleteGoal,
-    addHabit,
-    addGoal
-  } = useApp();
+  const { entries = [], habits = [], goals = [], updateHabit, deleteHabit, updateGoal, deleteGoal, addHabit, addGoal } = useApp();
   
   const today = useMemo(() => getLocalDate(), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
-  // --- MODAL STATE ---
+  // Modals
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
-
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+
+  // --- HELPER: Format Date for Display ---
+  const formattedDateTitle = useMemo(() => {
+    const dateObj = parse(selectedDate, 'yyyy-MM-dd', new Date());
+    return format(dateObj, 'EEEE, MMMM d');
+  }, [selectedDate]);
 
   // --- 1. CALCULATE MARKED DATES ---
   const markedDates = useMemo(() => {
     const marks: Record<string, any> = {};
-
     const initDate = (date: string) => {
-      if (!marks[date]) {
-        marks[date] = { 
-          dots: [], 
-          customStyles: { container: {}, text: {} }
-        };
-      }
+      if (!marks[date]) marks[date] = { dots: [], goalColor: null };
     };
 
-    // A. Habits -> DOTS
+    // Habits -> Dots
     habits.forEach((habit: Habit) => {
-      const datesToCheck = habit.completedDates || (habit.doneDate ? [habit.doneDate] : []);
-      datesToCheck.forEach((dateString: string) => {
-        initDate(dateString);
-        const exists = marks[dateString].dots.some((d: any) => d.key === `habit-${habit.id}`);
-        if (!exists) {
-          marks[dateString].dots.push({ key: `habit-${habit.id}`, color: habit.color });
+      const dates = habit.completedDates || (habit.doneDate ? [habit.doneDate] : []);
+      dates.forEach((d: string) => {
+        initDate(d);
+        if (!marks[d].dots.some((dot: any) => dot.key === habit.id)) {
+          marks[d].dots.push({ key: habit.id, color: habit.color });
         }
       });
     });
 
-    // B. Goals -> SQUARES
+    // Goals -> Background Color
     goals.forEach((goal: Goal) => {
       const start = goal.createdAt ? goal.createdAt.split('T')[0] : today;
       const end = goal.dueDate;
-
+      
       initDate(start);
-      marks[start].customStyles.container = {
-        backgroundColor: goal.color,
-        borderRadius: 4, 
-        width: '100%',
-      };
-      marks[start].customStyles.text = { color: 'black', fontWeight: 'bold' };
-
+      marks[start].goalColor = goal.color;
+      
       if (end) {
         initDate(end);
-        marks[end].customStyles.container = {
-          backgroundColor: goal.color,
-          borderRadius: 4,
-          width: '100%',
-        };
-        marks[end].customStyles.text = { color: 'black', fontWeight: 'bold' };
+        marks[end].goalColor = goal.color;
       }
     });
 
-    // C. Selection Highlight
-    initDate(selectedDate);
-    const existingContainer = marks[selectedDate].customStyles.container;
-    marks[selectedDate].customStyles.container = {
-      ...existingContainer,
-      borderWidth: 2,
-      borderColor: THEME.gold,
-    };
-
     return marks;
-  }, [habits, goals, selectedDate, today]);
+  }, [habits, goals, today]);
 
   // --- 2. FILTER DATA FOR SELECTED DAY ---
-  const activeItemsOnDay = useMemo(() => {
-    const dayHabits = habits.filter(h => {
-      const dates = h.completedDates || [];
-      return dates.includes(selectedDate);
-    });
-
+  const activeItems = useMemo(() => {
+    const dayHabits = habits.filter(h => (h.completedDates || []).includes(selectedDate));
     const dayGoals = goals.filter(g => {
       const start = g.createdAt ? g.createdAt.split('T')[0] : today;
-      const end = g.dueDate;
-      const isStart = start === selectedDate;
-      const isEnd = end === selectedDate;
-      return isStart || isEnd;
+      return start === selectedDate || g.dueDate === selectedDate;
     });
-
     const journalEntry = entries.find(e => e.date === selectedDate && !e.habitId);
-
     return { dayHabits, dayGoals, journalEntry };
   }, [selectedDate, habits, goals, entries, today]);
 
-  // --- HANDLERS ---
-  const handleHabitClick = (h: Habit) => {
-    setSelectedHabit(h);
-    setShowHabitModal(true);
-  };
+  // --- 3. CUSTOM DAY COMPONENT ---
+  const CustomDay = ({ date, state, marking }: { date?: DateData, state?: string, marking?: any }) => {
+    if (!date) return <View />;
 
-  const handleGoalClick = (g: Goal) => {
-    setSelectedGoal(g);
-    setShowGoalModal(true);
-  };
+    const isSelected = date.dateString === selectedDate;
+    const isToday = date.dateString === today;
+    const goalColor = marking?.goalColor;
+    const dots = marking?.dots || [];
 
-  const handleSaveHabit = (partial: Partial<Habit>) => {
-    if (partial.id) updateHabit(partial.id, partial);
-    else addHabit(partial);
-    setShowHabitModal(false);
-  };
+    return (
+      <TouchableOpacity 
+        onPress={() => setSelectedDate(date.dateString)}
+        activeOpacity={0.7}
+        style={[
+          styles.dayContainer,
+          goalColor && { backgroundColor: goalColor },
+          isSelected && { borderWidth: 2, borderColor: APP_THEME.accent },
+        ]}
+      >
+        <Text style={[
+          styles.dayText,
+          { color: goalColor ? '#000000' : (state === 'disabled' ? '#475569' : '#FFFFFF') },
+          isToday && !goalColor && { color: APP_THEME.accent, fontWeight: 'bold' }
+        ]}>
+          {date.day}
+        </Text>
 
-  const handleSaveGoal = (partial: Partial<Goal>) => {
-    if (partial.id) updateGoal(partial.id, partial);
-    else addGoal(partial);
-    setShowGoalModal(false);
+        <View style={styles.dotsRow}>
+          {dots.map((dot: any, index: number) => (
+            <View 
+              key={index} 
+              style={[
+                styles.miniDot, 
+                { backgroundColor: dot.color },
+                goalColor && { borderColor: 'rgba(0,0,0,0.2)', borderWidth: 0.5 } 
+              ]} 
+            />
+          ))}
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: THEME.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* CALENDAR CARD */}
-        <View style={[styles.card, { backgroundColor: THEME.cardBg }]}>
-          <Calendar
-            current={selectedDate}
-            onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-            markingType={'custom'}
-            markedDates={markedDates}
-            theme={{
-              backgroundColor: THEME.cardBg,
-              calendarBackground: THEME.cardBg,
-              monthTextColor: THEME.text,
-              dayTextColor: THEME.text,
-              todayTextColor: THEME.gold,
-              arrowColor: THEME.gold,
-              textDisabledColor: '#475569',
-            }}
-          />
-        </View>
+    <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
+      
+      {/* FLOWER COMPONENT (Foreground Mode) */}
+      <PageFlower screen="calendar" />
 
-        {/* DETAILS SECTION */}
-        <View style={[styles.card, { backgroundColor: THEME.cardBg }]}>
-          <Text style={[styles.sectionTitle, { color: THEME.text }]}>
-            {new Date(selectedDate).toLocaleDateString(undefined, {
-              weekday: 'long', month: 'long', day: 'numeric'
-            })}
-          </Text>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          {/* CALENDAR CARD */}
+          <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+            <Calendar
+              current={selectedDate}
+              dayComponent={({ date, state, marking }) => (
+                <CustomDay date={date} state={state} marking={marking} />
+              )}
+              markedDates={markedDates}
+              theme={{
+                calendarBackground: 'transparent',
+                textSectionTitleColor: '#b6c1cd',
+                arrowColor: APP_THEME.accent, 
+                monthTextColor: '#ffffff',
+                textMonthFontWeight: 'bold',
+                textMonthFontSize: 16,
+              }}
+            />
+          </View>
 
-          {activeItemsOnDay.dayHabits.length === 0 && 
-           activeItemsOnDay.dayGoals.length === 0 && 
-           !activeItemsOnDay.journalEntry && (
-            <Text style={{ color: THEME.textSecondary, fontStyle: 'italic' }}>
-              No activity recorded.
+          {/* DETAILS CARD */}
+          <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+            <Text style={[styles.sectionTitle, { color: APP_THEME.text }]}>
+              {formattedDateTitle}
             </Text>
-          )}
 
-          {/* Habits List */}
-          {activeItemsOnDay.dayHabits.map(h => (
-            <Pressable 
-              key={h.id} 
-              style={({pressed}) => [styles.itemRow, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => handleHabitClick(h)}
-            >
-              <View style={[styles.dot, { backgroundColor: h.color }]} />
-              <Text style={[styles.itemText, { color: THEME.text }]}>
-                Completed: <Text style={{fontWeight: 'bold'}}>{h.name}</Text>
-              </Text>
-            </Pressable>
-          ))}
+            {activeItems.dayHabits.length === 0 && activeItems.dayGoals.length === 0 && !activeItems.journalEntry && (
+              <Text style={{ color: "#b4d2cf", fontStyle: 'italic', marginBottom: 10 }}>No activity recorded.</Text>
+            )}
 
-          {/* Goals List */}
-          {activeItemsOnDay.dayGoals.map(g => {
-            let label = "Active Goal";
-            if (g.createdAt?.startsWith(selectedDate)) label = "START";
-            if (g.dueDate === selectedDate) label = "DUE";
+            {activeItems.dayHabits.map(h => (
+              <Pressable 
+                key={h.id} 
+                style={[styles.itemRow, { backgroundColor: APP_THEME.cardBackground }]} 
+                onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
+              >
+                <View style={[styles.dot, { backgroundColor: h.color }]} />
+                <Text style={[styles.itemText, { color: APP_THEME.text }]}>{h.name}</Text>
+                <Text style={styles.checkMark}>✓</Text>
+              </Pressable>
+            ))}
 
-            return (
+            {activeItems.dayGoals.map(g => (
               <Pressable 
                 key={g.id} 
-                style={({pressed}) => [styles.itemRow, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => handleGoalClick(g)}
+                style={[styles.itemRow, { backgroundColor: APP_THEME.cardBackground }]} 
+                onPress={() => { setSelectedGoal(g); setShowGoalModal(true); }}
               >
                 <View style={[styles.square, { backgroundColor: g.color }]} />
-                <Text style={[styles.itemText, { color: THEME.text }]}>
-                  {label}: <Text style={{fontWeight: 'bold'}}>{g.title}</Text>
-                </Text>
+                <Text style={[styles.itemText, { color: APP_THEME.text }]}>{g.title}</Text>
+                <Text style={styles.goalLabel}>GOAL</Text>
               </Pressable>
-            );
-          })}
-        </View>
-
-        {/* JOURNAL PREVIEW */}
-        {activeItemsOnDay.journalEntry && (
-          <View style={[styles.card, { backgroundColor: THEME.cardBg, borderColor: THEME.textSecondary, borderWidth: 0.5 }]}>
-            <Text style={[styles.legendTitle, { color: THEME.textSecondary }]}>Journal Entry</Text>
-            <Text style={[styles.itemText, { color: THEME.text, fontStyle: 'italic' }]} numberOfLines={2}>
-              "{activeItemsOnDay.journalEntry.text}"
-            </Text>
+            ))}
           </View>
-        )}
+          
+          {/* JOURNAL ENTRY */}
+          {activeItems.journalEntry && (
+            <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+              <Text style={{ color: APP_THEME.accent, fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
+              <Text style={{ color: APP_THEME.text, fontStyle: 'italic', lineHeight: 22 }}>
+                "{activeItems.journalEntry.text}"
+              </Text>
+            </View>
+          )}
 
-      </ScrollView>
+          {/* LEGEND SECTION */}
+          {(habits.length > 0 || goals.length > 0) && (
+            <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground, marginTop: 10 }]}>
+              <Text style={[styles.legendTitle, { color: APP_THEME.accent }]}>Legend</Text>
+              <View style={styles.legendContainer}>
+                {habits.map(h => (
+                  <View key={h.id} style={styles.legendItem}>
+                    <View style={[styles.dot, { backgroundColor: h.color, width: 8, height: 8 }]} />
+                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{h.name}</Text>
+                  </View>
+                ))}
+                {goals.map(g => (
+                  <View key={g.id} style={styles.legendItem}>
+                    <View style={[styles.square, { backgroundColor: g.color, width: 8, height: 8 }]} />
+                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{g.title}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
-      {/* EDIT MODALS */}
-      <AddHabitModal
-        visible={showHabitModal}
-        onClose={() => setShowHabitModal(false)}
-        darkMode={darkMode}
-        habit={selectedHabit}
-        onSave={handleSaveHabit}
-        onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }}
-      />
-      
-      <AddGoalModal
-        visible={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        darkMode={darkMode}
-        goal={selectedGoal}
-        onSave={handleSaveGoal}
-        onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }}
-      />
-    </SafeAreaView>
+        </ScrollView>
+
+        {/* MODALS */}
+        <AddHabitModal visible={showHabitModal} onClose={() => setShowHabitModal(false)} darkMode={darkMode} habit={selectedHabit} onSave={(p) => { if(p.id) updateHabit(p.id, p); else addHabit(p); setShowHabitModal(false); }} onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }} />
+        <AddGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} darkMode={darkMode} goal={selectedGoal} onSave={(p) => { if(p.id) updateGoal(p.id, p); else addGoal(p); setShowGoalModal(false); }} onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }} />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  safeArea: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100, gap: 16 },
-  card: {
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+  
+  card: { 
+    borderRadius: 20, 
+    padding: 16, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.2, 
+    shadowRadius: 8, 
     shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    elevation: 4 
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
+  
+  sectionTitle: { fontSize: 20, fontWeight: '800', marginBottom: 16, letterSpacing: 0.5 },
+  
+  itemRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
   },
-  itemRow: {
-    flexDirection: 'row',
+  
+  dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  square: { width: 12, height: 12, borderRadius: 3, marginRight: 12 },
+  itemText: { fontSize: 16, fontWeight: '600', flex: 1 },
+  checkMark: { color: '#4ade80', fontWeight: 'bold', fontSize: 16 },
+  goalLabel: { color: '#F1C453', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+
+  // --- CUSTOM DAY STYLES ---
+  dayContainer: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingVertical: 4,
+    borderRadius: 8,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 10,
+  dayText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2, 
   },
-  square: {
-    width: 10,
-    height: 10,
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    position: 'absolute',
+    bottom: 3,
+  },
+  miniDot: {
+    width: 4,
+    height: 4,
     borderRadius: 2,
-    marginRight: 10,
   },
-  itemText: {
-    fontSize: 15,
-  },
+
+  // --- LEGEND STYLES ---
   legendTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 8,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    minWidth: '40%',
+  },
+  legendText: {
+    fontSize: 12,
+    marginLeft: 6,
   },
 });

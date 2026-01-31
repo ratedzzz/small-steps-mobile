@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, Text, View, Animated, Modal, Dimensions } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { Habit } from "../types";
-import { getHabitBackgroundColor, getTextColorForBackground } from "../theme";
+import { getTextColorForBackground } from "../theme"; // Removed getHabitBackgroundColor import
 
 interface HabitItemProps {
   habit: Habit;
@@ -11,8 +11,8 @@ interface HabitItemProps {
   onToggleDone: (habitId: string, doneForDay: boolean) => void;
   onEdit: (habit: Habit) => void;
   celebrationPhrases?: string[];
-  index: number;         // <--- New Prop
-  totalHabits: number;   // <--- New Prop
+  index: number;
+  totalHabits: number;
 }
 
 const { width, height } = Dimensions.get("window");
@@ -20,6 +20,9 @@ const { width, height } = Dimensions.get("window");
 const isHabitCompleted = (habit: Habit, date: string) => {
   return habit.completedDates?.includes(date) || habit.doneDate === date;
 };
+
+// FIXED COLOR: Dark Blue (#055a8c) from your palette
+const ITEM_BG_COLOR = "#055a8c";
 
 export default function HabitItem({
   habit,
@@ -36,9 +39,10 @@ export default function HabitItem({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  // 1. Calculate Dynamic Colors
-  const cardBackgroundColor = getHabitBackgroundColor(index, totalHabits);
-  const textColor = getTextColorForBackground(cardBackgroundColor);
+  // 1. Static Dark Blue Background
+  const cardBackgroundColor = ITEM_BG_COLOR;
+  // 2. Text Color is always white on this dark blue
+  const textColor = "#FFFFFF";
 
   const handleToggle = () => {
     const wasCompleted = isCompleted;
@@ -72,7 +76,7 @@ export default function HabitItem({
         <Pressable
           onPress={() => onEdit(habit)}
           style={styles.contentArea}
-          android_ripple={{ color: textColor === "#FFFFFF" ? "#ffffff33" : "#00000033" }}
+          android_ripple={{ color: "#ffffff33" }}
         >
           {/* Dot color matches text for high contrast, or keep habit.color if you prefer */}
           <View style={[styles.dot, { backgroundColor: habit.color }]} />
@@ -98,19 +102,18 @@ export default function HabitItem({
           <View
             style={[
               styles.checkboxOuter,
-              { borderColor: textColor }, // Border matches text
-              isCompleted && { backgroundColor: textColor }, // Fill matches text when done
+              { borderColor: textColor }, 
+              isCompleted && { backgroundColor: textColor },
             ]}
           >
             {isCompleted && (
-              // The "Checkmark" is actually the card background color, creating a cutout effect
               <View style={[styles.checkboxInner, { backgroundColor: cardBackgroundColor }]} />
             )}
           </View>
         </Pressable>
       </View>
 
-      {/* Celebration Modal (Kept exactly as you had it) */}
+      {/* Celebration Modal */}
       <Modal
         visible={showCelebration}
         transparent={true}
@@ -134,6 +137,8 @@ export default function HabitItem({
                 explosionSpeed={400}
               />
             </View>
+            
+            {/* FIXED FONT SIZE: 26 to fit on one line */}
             <Text style={styles.celebrationTitle}>Congratulations!</Text>
             <Text style={styles.celebrationSubtitle}>Habit Complete</Text>
 
@@ -151,7 +156,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16, // Slightly rounder for the new look
+    borderRadius: 16, 
     marginBottom: 10,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -198,7 +203,6 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
-  // Modal Styles
   celebrationOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.85)",
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
   celebrationContent: {
     alignItems: "center",
     padding: 40,
-    width: '80%',
+    width: '90%', // Slightly wider to help text fit
   },
   confettiContainer: {
     position: "absolute",
@@ -216,7 +220,7 @@ const styles = StyleSheet.create({
     width: width, height: height,
   },
   celebrationTitle: {
-    fontSize: 32,
+    fontSize: 26, // REDUCED from 32
     fontWeight: "bold",
     color: "#F1C453",
     textAlign: "center",

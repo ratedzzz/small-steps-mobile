@@ -4,8 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ensureLocalPermission } from "../../src/notifications";
 import { useApp } from "../../src/store";
-// UPDATED IMPORT:
 import { APP_THEME } from "../../src/theme";
+import PageFlower from "../../src/components/PageFlower"; // IMPORTED
 
 export default function SettingsScreen() {
   const { habits, goals, entries, badges, pro, setPro } = useApp();
@@ -24,8 +24,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    // UPDATED PROP: colors={APP_THEME.mainGradient}
     <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
+      {/* ADDED FLOWER HERE */}
+      <PageFlower screen="settings" />
+
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.title}>Settings</Text>
@@ -87,12 +89,11 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 100 },
   title: { fontSize: 32, fontWeight: "bold", marginBottom: 20, color: '#001244' },
 
-  // Glass Card Style
   card: {
     borderRadius: 24,
     padding: 20,
     marginBottom: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.6)", // Semi-transparent white
+    backgroundColor: "rgba(255, 255, 255, 0.6)", 
     shadowColor: "#001244",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

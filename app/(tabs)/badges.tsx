@@ -11,8 +11,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../src/store";
 import { evalBadges, BadgeWithIcon } from "../../src/badges";
-// UPDATED IMPORT:
 import { APP_THEME } from "../../src/theme";
+import PageFlower from "../../src/components/PageFlower"; // IMPORTED
 
 const { width } = Dimensions.get('window');
 const BADGE_SIZE = (width / 3) - 24; 
@@ -22,7 +22,6 @@ function BadgeItem({ badge }: { badge: BadgeWithIcon }) {
 
   return (
     <View style={styles.badgeWrapper}>
-      {/* The Medal Circle - Glass Effect */}
       <View style={[
         styles.medalCircle,
         { 
@@ -39,7 +38,6 @@ function BadgeItem({ badge }: { badge: BadgeWithIcon }) {
       </View>
 
       <View style={styles.textContainer}>
-        {/* Navy text for high contrast on the light part of gradient */}
         <Text style={[styles.badgeTitle, { color: isUnlocked ? '#001244' : 'rgba(0,18,68,0.5)' }]}>
           {badge.name}
         </Text>
@@ -68,8 +66,10 @@ export default function BadgesTab() {
   const progressPercent = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
   return (
-    // UPDATED PROP: colors={APP_THEME.mainGradient}
     <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
+      {/* ADDED FLOWER HERE */}
+      <PageFlower screen="badges" />
+
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           
@@ -79,12 +79,11 @@ export default function BadgesTab() {
               You have unlocked {unlockedCount} of {totalCount} badges
             </Text>
             
-            {/* Progress Bar */}
             <View style={styles.progressBarBg}>
               <View 
                 style={[
                   styles.progressBarFill, 
-                  { width: `${progressPercent}%`, backgroundColor: '#001244' } // Navy fill
+                  { width: `${progressPercent}%`, backgroundColor: '#001244' } 
                 ]} 
               />
             </View>

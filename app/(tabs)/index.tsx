@@ -16,8 +16,8 @@ import HabitItem from "../../src/components/HabitItem";
 import { useApp } from "../../src/store";
 import { Goal, Habit } from "../../src/types";
 import { getLocalDate } from "../../src/utils";
-// UPDATED IMPORT:
 import { APP_THEME } from "../../src/theme"; 
+import PageFlower from "../../src/components/PageFlower"; 
 
 // --- TYPES ---
 interface StoreData {
@@ -139,9 +139,11 @@ export default function HomeScreen() {
   };
 
   return (
-    // UPDATED PROP: colors={APP_THEME.mainGradient}
     <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <PageFlower screen="home" />
+
+      
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           style={{ flex: 1 }}

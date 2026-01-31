@@ -1,9 +1,7 @@
 // src/utils.ts
+import { format } from 'date-fns';
 
 export const getLocalDate = (): string => {
-  const now = new Date();
-  // Subtract the timezone offset to get the correct local time
-  const offset = now.getTimezoneOffset() * 60000; 
-  const localTime = new Date(now.getTime() - offset);
-  return localTime.toISOString().split("T")[0];
+  // Returns today's date as "YYYY-MM-DD" based on the user's phone settings
+  return format(new Date(), 'yyyy-MM-dd');
 };

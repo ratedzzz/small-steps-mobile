@@ -8,10 +8,15 @@ interface Props {
   onEdit?: (goal: Goal) => void;
 }
 
+// MATCHING HABIT ITEM COLOR (Dark Blue)
+const ITEM_BG_COLOR = "#055a8c";
+
 export default function GoalItem({ goal, darkMode, onEdit }: Props) {
-  const theme = darkMode
-    ? { bg: "#074047", text: "#EAF7F6" }
-    : { bg: "#F1F3F4", text: "#15292E" };
+  // We force the theme to match HabitItem (Dark Blue background, White text)
+  const theme = { 
+    bg: ITEM_BG_COLOR, 
+    text: "#FFFFFF" 
+  };
 
   const handleEdit = () => {
     if (onEdit) onEdit(goal);
@@ -24,7 +29,8 @@ export default function GoalItem({ goal, darkMode, onEdit }: Props) {
         styles.container,
         { backgroundColor: theme.bg },
       ]}
-      android_ripple={{ color: "#33333322" }}
+      // White ripple because the background is dark
+      android_ripple={{ color: "#ffffff33" }}
     >
       <View
         style={[
@@ -47,27 +53,29 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
-    marginBottom: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    // 1. Matched to HabitItem
+    borderRadius: 16,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    // 2. Matched Shadow
     shadowColor: "#000",
-    shadowOpacity: 0.07,
-    elevation: 2,
-    minHeight: 44,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    // 3. Matched Dot Size
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginRight: 12,
-    marginLeft: 2,  // for more space from edge, matches HabitItem
   },
   name: {
-    fontSize: 15,
+    // 4. Matched Font Size
+    fontSize: 18,
     fontWeight: "600",
-    marginRight: 14,
-    marginLeft: 2,
     flexShrink: 1,
   },
 });

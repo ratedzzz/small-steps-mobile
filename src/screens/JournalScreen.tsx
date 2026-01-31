@@ -1,114 +1,76 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  StyleSheet, 
-  ScrollView, 
-  Pressable, 
-  useColorScheme,
-  KeyboardAvoidingView, // <--- NEW
-  Platform              // <--- NEW
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useApp, newId } from '../store';
 import { getLocalDate } from '../utils';
-
-const PALETTE = {
-  tealBg: '#15292E',
-  cardBg: '#074047',
-  textLight: '#EAF7F6',
-  textDark: '#0F172A',
-  accent: '#1DA27E'
-};
+import { APP_THEME, MOUNTAIN_PALETTE } from '../theme';
 
 export default function JournalScreen() {
-  const systemTheme = useColorScheme();
-  const darkMode = systemTheme === 'dark';
-  const theme = {
-    bg: PALETTE.tealBg,
-    cardBg: PALETTE.cardBg,
-    text: PALETTE.textLight,
-    inputBg: PALETTE.tealBg
-  };
-
   const { entries = [], upsertEntry } = useApp();
-  // Ensure we use the local date so the entry saves for "Today"
   const today = useMemo(() => getLocalDate(), []);
-  
   const [journalText, setJournalText] = useState('');
   
-  const todaysJournal = useMemo(
-    () => entries.find((e: any) => e?.date === today && !e?.habitId && !e?.goalId),
-    [entries, today]
-  );
+  const todaysJournal = useMemo(() => entries.find((e: any) => e?.date === today && !e?.habitId && !e?.goalId), [entries, today]);
 
-  useEffect(() => {
-    if (todaysJournal?.text) setJournalText(todaysJournal.text);
-  }, [todaysJournal]);
+  useEffect(() => { if (todaysJournal?.text) setJournalText(todaysJournal.text); }, [todaysJournal]);
 
   const saveJournal = () => {
-    upsertEntry({
-      id: todaysJournal?.id ?? newId(),
-      date: today,
-      text: journalText
-    });
+    upsertEntry({ id: todaysJournal?.id ?? newId(), date: today, text: journalText });
   };
 
   return (
-    // Replaced SafeAreaView with KeyboardAvoidingView to fix keyboard blocking text
     <KeyboardAvoidingView 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.container, { backgroundColor: theme.bg }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      // CRITICAL: Set background to transparent so the Gradient Wrapper shows through
+      style={[styles.container, { backgroundColor: 'transparent' }]}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={styles.title}>Daily Journal</Text>
-          <Text style={styles.subtitle}>
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        
+        {/* Main Card: Solid Navy Container */}
+        <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+          <Text style={[styles.title, { color: APP_THEME.text }]}>Daily Journal</Text>
+          <Text style={[styles.subtitle, { color: MOUNTAIN_PALETTE[1] }]}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </Text>
           
-          <Text style={styles.promptTitle}>How are you feeling about your progress?</Text>
+          <Text style={[styles.promptTitle, { color: APP_THEME.text }]}>How are you feeling about your progress?</Text>
           
+          {/* Input Box: Uses the Dark Blue Item Color (#055a8c) for contrast */}
           <TextInput
             style={[
-              styles.journalInput,
-              { backgroundColor: theme.inputBg, color: theme.text }
+              styles.journalInput, 
+              { 
+                backgroundColor: APP_THEME.cardBackground, // Dark Blue
+                color: APP_THEME.text, 
+                borderColor: APP_THEME.cardBackground // Match bg so no border line is needed
+              }
             ]}
             multiline
             value={journalText}
             onChangeText={setJournalText}
-            placeholder="Reflect on your habits, challenges, and victories..."
-            placeholderTextColor={PALETTE.textLight}
-            textAlignVertical="top" // <--- CRITICAL FIX FOR ANDROID
+            placeholder="Reflect on your habits..."
+            placeholderTextColor={MOUNTAIN_PALETTE[1]} // Mist Blue
+            textAlignVertical="top" 
           />
           
+          {/* Save Button: Peach Accent */}
           <Pressable 
             style={({pressed}) => [
               styles.saveButton, 
-              { backgroundColor: PALETTE.accent, opacity: pressed ? 0.8 : 1 }
+              { backgroundColor: APP_THEME.accent, opacity: pressed ? 0.8 : 1 }
             ]} 
             onPress={saveJournal}
           >
-            <Text style={styles.saveButtonText}>Save Entry</Text>
+            <Text style={[styles.saveButtonText, { color: APP_THEME.solidBackground }]}>Save Entry</Text>
           </Pressable>
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={styles.promptTitle}>Prompts to consider:</Text>
-          <Text style={styles.promptText}>
+        {/* Prompts Card: Solid Navy Container */}
+        <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+          <Text style={[styles.promptTitle, { color: APP_THEME.text }]}>Prompts:</Text>
+          <Text style={[styles.promptText, { color: MOUNTAIN_PALETTE[1] }]}>
             • What habit felt easiest today?{'\n'}
             • What challenged you?{'\n'}
-            • What are you grateful for?{'\n'}
-            • What’s one small win from today?{'\n'}
-            • What will you focus on tomorrow?
+            • What are you grateful for?
           </Text>
         </View>
       </ScrollView>
@@ -119,34 +81,29 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4, color: PALETTE.textLight },
-  subtitle: { fontSize: 14, marginBottom: 20, color: PALETTE.textLight },
-  card: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
+  subtitle: { fontSize: 14, marginBottom: 20 },
+  card: { 
+    borderRadius: 16, 
+    padding: 20, 
+    marginBottom: 16, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 8, 
+    elevation: 3 
   },
-  promptTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: PALETTE.textLight },
-  journalInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    minHeight: 250,
-    marginBottom: 16,
-    // Ensure text starts at top on all platforms
-    textAlignVertical: 'top', 
+  promptTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  journalInput: { 
+    borderWidth: 1, 
+    borderRadius: 12, 
+    padding: 16, 
+    fontSize: 16, 
+    minHeight: 250, 
+    marginBottom: 16, 
+    textAlignVertical: 'top' 
   },
-  saveButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center'
-  },
-  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
-  promptText: { fontSize: 14, lineHeight: 24, color: PALETTE.textLight }
+  saveButton: { padding: 16, borderRadius: 12, alignItems: 'center' },
+  saveButtonText: { fontSize: 16, fontWeight: 'bold' },
+  promptText: { fontSize: 14, lineHeight: 24 }
 });

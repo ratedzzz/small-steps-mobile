@@ -1,37 +1,50 @@
 // src/theme.ts
 
-// 1. The Mountain Palette (Lightest to Darkest)
+// 1. The Exact Palette from your Image (Right to Left)
 export const MOUNTAIN_PALETTE = [
-  "#f7d6bf", // 0: Peach
-  "#b0cac7", // 1: Pale Blue/Green
-  "#318fb5", // 2: Mid Blue
-  "#005086", // 3: Dark Blue
-  "#001244", // 4: Deepest Navy
+  "#fcdfc8", // 0: Peach (Top/Right)
+  "#b4d2cf", // 1: Mist/Pale Blue
+  "#3d9bc4", // 2: Mid Blue
+  "#055a8c", // 3: Dark Blue
+  "#01153e", // 4: Deep Navy (Bottom/Left)
 ];
 
-// 2. THEME EXPORTS (This fixes your TypeScript errors)
+// 2. THEME EXPORTS
 export const APP_THEME = {
-  // "as const" tells TS this array will ALWAYS have exactly these two colors
-  mainGradient: [MOUNTAIN_PALETTE[0], MOUNTAIN_PALETTE[4]] as const, 
+  // Main background gradient (Peach -> Deep Navy)
+  mainGradient: [
+    MOUNTAIN_PALETTE[0], 
+    MOUNTAIN_PALETTE[1], 
+    MOUNTAIN_PALETTE[2], 
+    MOUNTAIN_PALETTE[3], 
+    MOUNTAIN_PALETTE[4]
+  ] as const, 
+  
+  // Screen Background Fallback
   solidBackground: MOUNTAIN_PALETTE[4], // Deep Navy
+  
+  // Cards/Containers: Solid Navy
+  containerBackground: "#032059", 
+  
+  // Design Rule: Items (Habits/Goals) use specific Dark Blue
+  cardBackground: MOUNTAIN_PALETTE[3], // #055a8c
+  
+  // Accents
+  accent: MOUNTAIN_PALETTE[0], // Peach
+  goldAccent: "#F1C453",       // Gold
+
   text: "#FFFFFF",
 };
 
-// 3. Logic: Background Gradient (Light -> Dark), Items (Dark -> Light)
+// 3. Logic: Background Gradient for Items
+// We keep the function signature so we don't break existing components, 
+// but now it enforces the Uniform Dark Blue rule.
 export const getHabitBackgroundColor = (index: number, total: number) => {
-  if (total === 0) return MOUNTAIN_PALETTE[4];
-  
-  // Reverse palette for items so the top item is Navy (#001244)
-  const itemPalette = [...MOUNTAIN_PALETTE].reverse();
-  
-  const position = index / (total - 1 || 1); 
-  const colorIndex = Math.round(position * (itemPalette.length - 1));
-  
-  return itemPalette[colorIndex];
+  return APP_THEME.cardBackground;
 };
 
 // 4. Logic: Text Color
+// Since the card is always Dark Blue, the text is always White.
 export const getTextColorForBackground = (bgColor: string) => {
-  const lightBackgrounds = ["#f7d6bf", "#b0cac7"];
-  return lightBackgrounds.includes(bgColor) ? "#000000" : "#FFFFFF";
+  return "#FFFFFF";
 };
