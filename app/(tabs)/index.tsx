@@ -6,6 +6,7 @@ import {
   Text,
   useColorScheme,
   View,
+  Image // ADDED
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,20 +19,6 @@ import { Goal, Habit } from "../../src/types";
 import { getLocalDate } from "../../src/utils";
 import { APP_THEME } from "../../src/theme"; 
 import PageFlower from "../../src/components/PageFlower"; 
-
-// --- TYPES ---
-interface StoreData {
-  habits: Habit[];
-  goals: Goal[];
-  pro: boolean;
-  updateHabit: (id: string, data: Partial<Habit>) => void;
-  toggleHabit: (id: string, date: string) => void;
-  deleteHabit: (id: string) => void;
-  updateGoal: (id: string, data: Partial<Goal>) => void;
-  deleteGoal: (id: string) => void;
-  addHabit: (data: Partial<Habit>) => void;
-  addGoal: (data: Partial<Goal>) => void;
-}
 
 // --- CONTENT ---
 const quotes = [
@@ -49,10 +36,13 @@ const CELEBRATION_PHRASES = [
 export default function HomeScreen() {
   const darkMode = useColorScheme() === "dark";
 
+  // UPDATED: Destructure new user fields from the Store
   const {
     habits = [],
     goals = [],
     pro,
+    userName,    // NEW
+    userAvatar,  // NEW
     updateHabit,
     toggleHabit,
     deleteHabit,
@@ -60,7 +50,7 @@ export default function HomeScreen() {
     deleteGoal,
     addHabit,
     addGoal,
-  } = useApp() as StoreData;
+  } = useApp();
 
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -142,18 +132,18 @@ export default function HomeScreen() {
     <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
       <PageFlower screen="home" />
 
-      
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* UPDATED HEADER */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.title, { color: "#001244" }]}>
-                Small Steps
+              {/* Dynamic Name */}
+              <Text style={[styles.title, { color: "#001244", fontSize: 28 }]}>
+                Hi, {userName || "Friend"}!
               </Text>
               <Text style={[styles.subtitle, { color: "#005086" }]}>
                 {new Date().toLocaleDateString("en-US", {
@@ -162,6 +152,19 @@ export default function HomeScreen() {
                   day: "numeric",
                 })}
               </Text>
+            </View>
+            
+            {/* Avatar Circle */}
+            <View style={styles.avatarContainer}>
+              {userAvatar ? (
+                <Image source={{ uri: userAvatar }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                   <Text style={styles.avatarInitials}>
+                     {(userName?.[0] || "U").toUpperCase()}
+                   </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -305,7 +308,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
     marginTop: 10,
+    paddingHorizontal: 8,
   },
+  // UPDATED: Added Avatar Styles
+  avatarContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: {width:0, height:2}
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#005086',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  
   title: { fontSize: 34, fontWeight: "800", letterSpacing: 0.5 },
   subtitle: { fontSize: 16, marginTop: 4, fontWeight: "600" },
 
