@@ -1,47 +1,34 @@
-// src/types.ts
-export type ID = string;
-
-export type Habit = {
-  id: ID;
-  name: string;
+export interface Habit {
+  id: string;
+  name: string; // The name of the habit (e.g., "Drink Water")
   color: string;
-  reminderTime?: string; // "07:30" in 24-hour format
-  archived?: boolean;
-  
-  // NEW: Tracks history of completions for the Calendar
-  completedDates: string[]; 
-  
-  // We keep this for backward compatibility (it will represent the LAST done date)
-  doneDate?: string; 
-};
+  reminderTime?: string;
+  archived: boolean;
+  completedDates: string[];
+}
 
-export type Goal = {
-  id: ID;
-  title: string;
+export interface Goal {
+  id: string;
+  title: string; // The goal title (e.g., "Read 12 Books")
   color: string;
-  dueDate?: string;      // YYYY-MM-DD
-  
-  // NEW: Needed so the Calendar knows when to START drawing the line
-  createdAt: string;     
-  
-  relatedHabitIds?: ID[];
-  archived?: boolean;
-};
+  dueDate?: string;
+  createdAt: string;
+  archived: boolean;
+  relatedHabitIds?: string[]; // Added this to fix ArchivesScreen error
+}
 
-export type JournalEntry = {
-  id: ID;
-  date: string;          // YYYY-MM-DD
-  habitId?: ID;          // undefined => general day note
-  text?: string;
-  completed?: boolean;
-};
+export interface JournalEntry {
+  id: string;
+  date: string;
+  habitId?: string;
+  text: string;
+}
 
-export type Badge = {
-  id: ID;
+export interface Badge {
+  id: string;
   name: string;
-  description: string;
-  unlockedAt?: string;
-  
-  // NEW: For the new Medal UI
-  icon?: string; 
-};
+  icon: string;
+  description?: string; // Added to fix badges.tsx error
+  unlockedAt?: string;  // Added to fix badges.tsx and settings.tsx errors
+  earnedDate?: string;  // Keeping this for backward compatibility
+}

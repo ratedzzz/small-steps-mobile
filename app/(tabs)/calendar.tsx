@@ -2,28 +2,28 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient'; 
-import { Calendar } from 'react-native-calendars';
-import type { DateData } from 'react-native-calendars';
+import { Calendar, DateData } from 'react-native-calendars';
 import { format, parse } from 'date-fns';
 
 import { useApp } from '../../src/store';
-import { Habit, Goal } from '../../src/types';
-import { getLocalDate } from '../../src/utils';
+import { Habit, Goal } from '../../src/types'; // Using the restored types file
 import { APP_THEME } from '../../src/theme'; 
 
+// Import your custom components
 import AddHabitModal from '../../src/components/AddHabitModal';
 import AddGoalModal from '../../src/components/AddGoalModal';
-import PageFlower from '../../src/components/PageFlower'; // IMPORTED
+import PageFlower from '../../src/components/PageFlower';
 
 export default function CalendarTab() {
-  const darkMode = true; 
-
+  const darkMode = true; // Defaulting to dark mode
   const { entries = [], habits = [], goals = [], updateHabit, deleteHabit, updateGoal, deleteGoal, addHabit, addGoal } = useApp();
   
+  // Helper for today's date
+  const getLocalDate = () => new Date().toISOString().split('T')[0];
   const today = useMemo(() => getLocalDate(), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
 
-  // Modals
+  // Modals State
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -31,8 +31,12 @@ export default function CalendarTab() {
 
   // --- HELPER: Format Date for Display ---
   const formattedDateTitle = useMemo(() => {
-    const dateObj = parse(selectedDate, 'yyyy-MM-dd', new Date());
-    return format(dateObj, 'EEEE, MMMM d');
+    try {
+      const dateObj = parse(selectedDate, 'yyyy-MM-dd', new Date());
+      return format(dateObj, 'EEEE, MMMM d');
+    } catch (e) {
+      return selectedDate;
+    }
   }, [selectedDate]);
 
   // --- 1. CALCULATE MARKED DATES ---
@@ -44,7 +48,7 @@ export default function CalendarTab() {
 
     // Habits -> Dots
     habits.forEach((habit: Habit) => {
-      const dates = habit.completedDates || (habit.doneDate ? [habit.doneDate] : []);
+      const dates = habit.completedDates || [];
       dates.forEach((d: string) => {
         initDate(d);
         if (!marks[d].dots.some((dot: any) => dot.key === habit.id)) {
@@ -90,6 +94,10 @@ export default function CalendarTab() {
     const goalColor = marking?.goalColor;
     const dots = marking?.dots || [];
 
+    // Fallback colors
+    const accentColor = APP_THEME.accent || '#88C0D0'; 
+    const textColor = goalColor ? '#000000' : (state === 'disabled' ? '#475569' : '#FFFFFF');
+
     return (
       <TouchableOpacity 
         onPress={() => setSelectedDate(date.dateString)}
@@ -97,13 +105,13 @@ export default function CalendarTab() {
         style={[
           styles.dayContainer,
           goalColor && { backgroundColor: goalColor },
-          isSelected && { borderWidth: 2, borderColor: APP_THEME.accent },
+          isSelected && { borderWidth: 2, borderColor: accentColor },
         ]}
       >
         <Text style={[
           styles.dayText,
-          { color: goalColor ? '#000000' : (state === 'disabled' ? '#475569' : '#FFFFFF') },
-          isToday && !goalColor && { color: APP_THEME.accent, fontWeight: 'bold' }
+          { color: textColor },
+          isToday && !goalColor && { color: accentColor, fontWeight: 'bold' }
         ]}>
           {date.day}
         </Text>
@@ -125,16 +133,16 @@ export default function CalendarTab() {
   };
 
   return (
-    <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
+    <LinearGradient colors={APP_THEME.mainGradient || ['#2E3440', '#3B4252']} style={{ flex: 1 }}>
       
-      {/* FLOWER COMPONENT (Foreground Mode) */}
+      {/* FLOWER COMPONENT */}
       <PageFlower screen="calendar" />
 
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* CALENDAR CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
+          <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
             <Calendar
               current={selectedDate}
               dayComponent={({ date, state, marking }) => (
@@ -144,7 +152,7 @@ export default function CalendarTab() {
               theme={{
                 calendarBackground: 'transparent',
                 textSectionTitleColor: '#b6c1cd',
-                arrowColor: APP_THEME.accent, 
+                arrowColor: APP_THEME.accent || '#88C0D0', 
                 monthTextColor: '#ffffff',
                 textMonthFontWeight: 'bold',
                 textMonthFontSize: 16,
@@ -153,8 +161,8 @@ export default function CalendarTab() {
           </View>
 
           {/* DETAILS CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
-            <Text style={[styles.sectionTitle, { color: APP_THEME.text }]}>
+          <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
+            <Text style={[styles.sectionTitle, { color: '#FFF' }]}>
               {formattedDateTitle}
             </Text>
 
@@ -165,11 +173,11 @@ export default function CalendarTab() {
             {activeItems.dayHabits.map(h => (
               <Pressable 
                 key={h.id} 
-                style={[styles.itemRow, { backgroundColor: APP_THEME.cardBackground }]} 
+                style={[styles.itemRow, { backgroundColor: 'rgba(255,255,255,0.05)' }]} 
                 onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
               >
                 <View style={[styles.dot, { backgroundColor: h.color }]} />
-                <Text style={[styles.itemText, { color: APP_THEME.text }]}>{h.name}</Text>
+                <Text style={[styles.itemText, { color: '#FFF' }]}>{h.name}</Text>
                 <Text style={styles.checkMark}>✓</Text>
               </Pressable>
             ))}
@@ -177,11 +185,11 @@ export default function CalendarTab() {
             {activeItems.dayGoals.map(g => (
               <Pressable 
                 key={g.id} 
-                style={[styles.itemRow, { backgroundColor: APP_THEME.cardBackground }]} 
+                style={[styles.itemRow, { backgroundColor: 'rgba(255,255,255,0.05)' }]} 
                 onPress={() => { setSelectedGoal(g); setShowGoalModal(true); }}
               >
                 <View style={[styles.square, { backgroundColor: g.color }]} />
-                <Text style={[styles.itemText, { color: APP_THEME.text }]}>{g.title}</Text>
+                <Text style={[styles.itemText, { color: '#FFF' }]}>{g.title}</Text>
                 <Text style={styles.goalLabel}>GOAL</Text>
               </Pressable>
             ))}
@@ -189,9 +197,9 @@ export default function CalendarTab() {
           
           {/* JOURNAL ENTRY */}
           {activeItems.journalEntry && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground }]}>
-              <Text style={{ color: APP_THEME.accent, fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
-              <Text style={{ color: APP_THEME.text, fontStyle: 'italic', lineHeight: 22 }}>
+            <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
+              <Text style={{ color: APP_THEME.accent || '#88C0D0', fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
+              <Text style={{ color: '#FFF', fontStyle: 'italic', lineHeight: 22 }}>
                 "{activeItems.journalEntry.text}"
               </Text>
             </View>
@@ -199,8 +207,8 @@ export default function CalendarTab() {
 
           {/* LEGEND SECTION */}
           {(habits.length > 0 || goals.length > 0) && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.containerBackground, marginTop: 10 }]}>
-              <Text style={[styles.legendTitle, { color: APP_THEME.accent }]}>Legend</Text>
+            <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440', marginTop: 10 }]}>
+              <Text style={[styles.legendTitle, { color: APP_THEME.accent || '#88C0D0' }]}>Legend</Text>
               <View style={styles.legendContainer}>
                 {habits.map(h => (
                   <View key={h.id} style={styles.legendItem}>
@@ -220,9 +228,39 @@ export default function CalendarTab() {
 
         </ScrollView>
 
-        {/* MODALS */}
-        <AddHabitModal visible={showHabitModal} onClose={() => setShowHabitModal(false)} darkMode={darkMode} habit={selectedHabit} onSave={(p) => { if(p.id) updateHabit(p.id, p); else addHabit(p); setShowHabitModal(false); }} onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }} />
-        <AddGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} darkMode={darkMode} goal={selectedGoal} onSave={(p) => { if(p.id) updateGoal(p.id, p); else addGoal(p); setShowGoalModal(false); }} onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }} />
+        {/* MODALS connected to Store Actions */}
+        <AddHabitModal 
+          visible={showHabitModal} 
+          onClose={() => setShowHabitModal(false)} 
+          darkMode={darkMode} 
+          habit={selectedHabit} 
+          onSave={(p: any) => { 
+            if(p.id) updateHabit(p.id, p); 
+            else addHabit(p); 
+            setShowHabitModal(false); 
+          }} 
+          onDelete={(id: string) => { 
+            deleteHabit(id); 
+            setShowHabitModal(false); 
+          }} 
+        />
+
+        <AddGoalModal 
+          visible={showGoalModal} 
+          onClose={() => setShowGoalModal(false)} 
+          darkMode={darkMode} 
+          goal={selectedGoal} 
+          onSave={(p: any) => { 
+            if(p.id) updateGoal(p.id, p); 
+            else addGoal(p); 
+            setShowGoalModal(false); 
+          }} 
+          onDelete={(id: string) => { 
+            deleteGoal(id); 
+            setShowGoalModal(false); 
+          }} 
+        />
+
       </SafeAreaView>
     </LinearGradient>
   );
@@ -258,7 +296,6 @@ const styles = StyleSheet.create({
   checkMark: { color: '#4ade80', fontWeight: 'bold', fontSize: 16 },
   goalLabel: { color: '#F1C453', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
 
-  // --- CUSTOM DAY STYLES ---
   dayContainer: {
     width: 32,
     height: 32,
@@ -282,8 +319,6 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
-
-  // --- LEGEND STYLES ---
   legendTitle: {
     fontSize: 14,
     fontWeight: 'bold',

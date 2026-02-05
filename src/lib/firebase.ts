@@ -1,13 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // Added this import
 import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
 // @ts-ignore - TypeScript sometimes misses the React Native specific exports
 import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 
-// extracted from your screenshot
+// Your configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCSz37Aup0OygYdBXU0FQKmN3xoCeOyMRQ",
+  apiKey: "AIzaSyCSz37Aup00yGYdBXU0FQKmN3xoCeOyMRQ",
   authDomain: "small-steps-c273b.firebaseapp.com",
   projectId: "small-steps-c273b",
   storageBucket: "small-steps-c273b.firebasestorage.app",
@@ -26,3 +27,6 @@ export const auth = initializeAuth(app, {
 
 // 3. Initialize and Export Firestore Database
 export const db = getFirestore(app);
+
+// 4. Initialize and Export Storage (This fixes the error)
+export const storage = getStorage(app);

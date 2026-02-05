@@ -1,59 +1,43 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Pressable, StyleSheet, Text, View, Animated, Modal, Dimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View, Animated, Modal, Dimensions, TouchableOpacity } from "react-native";
+// @ts-ignore
 import ConfettiCannon from "react-native-confetti-cannon";
-import { Habit } from "../types";
-import { getTextColorForBackground } from "../theme"; // Removed getHabitBackgroundColor import
+import { Habit } from "../types"; // Import from types now
 
 interface HabitItemProps {
   habit: Habit;
-  date: string;
-  darkMode: boolean;
-  onToggleDone: (habitId: string, doneForDay: boolean) => void;
-  onEdit: (habit: Habit) => void;
-  celebrationPhrases?: string[];
-  index: number;
-  totalHabits: number;
+  onToggle: (id: string) => void;
+  onEdit?: (habit: Habit) => void; // Added Edit capability
 }
 
 const { width, height } = Dimensions.get("window");
-
-const isHabitCompleted = (habit: Habit, date: string) => {
-  return habit.completedDates?.includes(date) || habit.doneDate === date;
-};
-
-// FIXED COLOR: Dark Blue (#055a8c) from your palette
 const ITEM_BG_COLOR = "#055a8c";
 
-export default function HabitItem({
-  habit,
-  date,
-  darkMode,
-  onToggleDone,
-  onEdit,
-  celebrationPhrases = ["Great Job!", "Way To Go!", "You Did It!"],
-  index,
-  totalHabits,
-}: HabitItemProps) {
-  const isCompleted = isHabitCompleted(habit, date);
+export default function HabitItem({ habit, onToggle, onEdit }: HabitItemProps) {
+  // 1. Calculate Today's Date
+  const today = new Date().toISOString().split('T')[0];
+  const isCompleted = habit.completedDates?.includes(today);
+
+  // 2. Animation State
   const [showCelebration, setShowCelebration] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  // 1. Static Dark Blue Background
+  // 3. Static Styles
   const cardBackgroundColor = ITEM_BG_COLOR;
-  // 2. Text Color is always white on this dark blue
   const textColor = "#FFFFFF";
 
   const handleToggle = () => {
-    const wasCompleted = isCompleted;
-    if (!wasCompleted) {
-      setShowCelebration(true);
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
-      ]).start();
-    }
-    onToggleDone(habit.id, wasCompleted);
+    if (!isCompleted) triggerCelebration();
+    onToggle(habit.id);
+  };
+
+  const triggerCelebration = () => {
+    setShowCelebration(true);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
+    ]).start();
   };
 
   const closeCelebration = () => {
@@ -63,24 +47,22 @@ export default function HabitItem({
     ]).start(() => setShowCelebration(false));
   };
 
-  useEffect(() => {
-    if (!showCelebration) {
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.8);
-    }
-  }, [showCelebration]);
-
   return (
     <>
       <View style={[styles.container, { backgroundColor: cardBackgroundColor }]}>
+        
+        {/* PRESS to Toggle, LONG PRESS to Edit */}
         <Pressable
-          onPress={() => onEdit(habit)}
+          onPress={handleToggle}
+          onLongPress={() => onEdit && onEdit(habit)}
+          delayLongPress={500}
           style={styles.contentArea}
           android_ripple={{ color: "#ffffff33" }}
         >
-          {/* Dot color matches text for high contrast, or keep habit.color if you prefer */}
-          <View style={[styles.dot, { backgroundColor: habit.color }]} />
+          {/* Dot color */}
+          <View style={[styles.dot, { backgroundColor: habit.color || '#FFF' }]} />
           
+          {/* NAME (Fixed from title to name) */}
           <Text
             style={[
               styles.name, 
@@ -90,10 +72,11 @@ export default function HabitItem({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {habit.name}
+            {habit.name} 
           </Text>
         </Pressable>
 
+        {/* Checkbox Area */}
         <Pressable
           onPress={handleToggle}
           style={styles.checkboxArea}
@@ -138,13 +121,12 @@ export default function HabitItem({
               />
             </View>
             
-            {/* FIXED FONT SIZE: 26 to fit on one line */}
             <Text style={styles.celebrationTitle}>Congratulations!</Text>
             <Text style={styles.celebrationSubtitle}>Habit Complete</Text>
 
-            <Pressable onPress={closeCelebration} style={styles.continueButton}>
+            <TouchableOpacity onPress={closeCelebration} style={styles.continueButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
-            </Pressable>
+            </TouchableOpacity>
           </Animated.View>
         </Pressable>
       </Modal>
@@ -212,7 +194,7 @@ const styles = StyleSheet.create({
   celebrationContent: {
     alignItems: "center",
     padding: 40,
-    width: '90%', // Slightly wider to help text fit
+    width: '90%', 
   },
   confettiContainer: {
     position: "absolute",
@@ -220,7 +202,7 @@ const styles = StyleSheet.create({
     width: width, height: height,
   },
   celebrationTitle: {
-    fontSize: 26, // REDUCED from 32
+    fontSize: 26, 
     fontWeight: "bold",
     color: "#F1C453",
     textAlign: "center",

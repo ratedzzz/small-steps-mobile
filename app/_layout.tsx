@@ -1,106 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { useApp } from '../src/store';
-import { APP_THEME } from '../src/theme';
-import { scheduleDailyLocalNotification, cancelAll } from '../src/notifications';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '../src/lib/firebase';
-
-function parseTimeString(input?: string): { hour: number; minute: number } | null {
-  if (!input) return null;
-  const s = input.toUpperCase().trim();
-  const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/);
-  if (!m) return null;
-  let hh = parseInt(m[1], 10);
-  const mm = parseInt(m[2], 10);
-  const ap = m[3] as 'AM' | 'PM' | undefined;
-  if (Number.isNaN(hh) || Number.isNaN(mm) || mm < 0 || mm > 59) return null;
-  if (ap) hh = ap === 'AM' ? (hh === 12 ? 0 : hh % 12) : (hh === 12 ? 12 : (hh % 12) + 12);
-  else hh = Math.max(0, Math.min(23, hh));
-  return { hour: hh, minute: mm };
-}
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "../src/lib/firebase"; 
+import { useApp } from "../src/store";
 
 export default function RootLayout() {
-  const { habits = [], setUser } = useApp();
   const [initializing, setInitializing] = useState(true);
-  const [user, setAuthUser] = useState<User | null>(null);
-  
-  const segments = useSegments();
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
+  const segments = useSegments();
+  const { setUser: setStoreUser } = useApp();
 
-  // 1. Auth State Listener
+  // 1. Listen for authentication state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      setAuthUser(authUser);
-      
+    const subscriber = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
       if (authUser) {
-        setUser(authUser.uid, authUser.displayName || "Friend", authUser.photoURL);
-      } else {
-        setUser(null, "Friend", null);
+        // Sync Firebase User to our Zustand Store
+        setStoreUser(authUser.uid, authUser.displayName || "Friend", authUser.photoURL);
       }
-
       if (initializing) setInitializing(false);
     });
-    return unsubscribe;
+    return subscriber; // unsubscribe on unmount
   }, []);
 
-  // 2. Routing Logic (Gatekeeper)
+  // 2. Protect Routes
   useEffect(() => {
     if (initializing) return;
 
-    // TS Fix: Cast segments to string to avoid "no overlap" error
-    const inTabsGroup = (segments[0] as string) === '(tabs)';
-
-    if (user && !inTabsGroup) {
-      // Redirect to Tabs if logged in
-      router.replace('/(tabs)');
-    } else if (!user && inTabsGroup) {
-      // Redirect to Login if not logged in
-      // TS Fix: Cast route to 'any' to bypass strict typing for now
-      router.replace('/login' as any);
+    const inAuthGroup = segments[0] === "(tabs)";
+    
+    if (!user && inAuthGroup) {
+      // If not logged in, go to Login
+      router.replace("/login");
+    } else if (user && segments[0] === "login") {
+      // If logged in and on Login page, go to Home
+      router.replace("/(tabs)");
     }
   }, [user, initializing, segments]);
 
-  // 3. Notification Scheduler
-  useEffect(() => {
-    (async () => {
-      try {
-        await cancelAll();
-        for (const habit of habits) {
-          if (!habit?.reminderTime) continue;
-          const t = parseTimeString(habit.reminderTime);
-          if (!t) continue;
-          await scheduleDailyLocalNotification(t.hour, t.minute, {
-            title: 'Small Steps Reminder 🌟',
-            body: `Time for: ${habit.name}`,
-          });
-        }
-      } catch (e) {
-        console.log("Notification error:", e);
-      }
-    })();
-  }, [habits]);
-
-  // 4. Loading Indicator
+  // 3. Show loading spinner while checking auth
   if (initializing) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: APP_THEME.solidBackground }}>
-        <ActivityIndicator size="large" color="#4A90E2" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#2E3440" }}>
+        <ActivityIndicator size="large" color="#88C0D0" />
       </View>
     );
   }
 
-  // 5. Main Layout
   return (
-    <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: APP_THEME.solidBackground }}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-        </Stack>
-      </View>
-    </SafeAreaProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+    </Stack>
   );
 }
