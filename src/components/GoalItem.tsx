@@ -6,12 +6,14 @@ interface Props {
   goal: Goal;
   darkMode: boolean;
   onEdit?: (goal: Goal) => void;
+  // New prop to handle the long press from HomeScreen
+  onArchive?: () => void; 
 }
 
 // MATCHING HABIT ITEM COLOR (Dark Blue)
 const ITEM_BG_COLOR = "#055a8c";
 
-export default function GoalItem({ goal, darkMode, onEdit }: Props) {
+export default function GoalItem({ goal, darkMode, onEdit, onArchive }: Props) {
   // We force the theme to match HabitItem (Dark Blue background, White text)
   const theme = { 
     bg: ITEM_BG_COLOR, 
@@ -25,6 +27,9 @@ export default function GoalItem({ goal, darkMode, onEdit }: Props) {
   return (
     <Pressable
       onPress={handleEdit}
+      // Hook up the Archive function here
+      onLongPress={onArchive}
+      delayLongPress={500}
       style={[
         styles.container,
         { backgroundColor: theme.bg },

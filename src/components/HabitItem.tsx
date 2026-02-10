@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Pressable, StyleSheet, Text, View, Animated, Modal, Dimensions, TouchableOpacity } from "react-native";
 // @ts-ignore
 import ConfettiCannon from "react-native-confetti-cannon";
-import { Habit } from "../types"; // Import from types now
+import { Habit } from "../types"; 
 
 interface HabitItemProps {
   habit: Habit;
   onToggle: (id: string) => void;
-  onEdit?: (habit: Habit) => void; // Added Edit capability
+  onEdit?: (habit: Habit) => void;
+  onArchive?: () => void; // Added onArchive prop
 }
 
 const { width, height } = Dimensions.get("window");
 const ITEM_BG_COLOR = "#055a8c";
 
-export default function HabitItem({ habit, onToggle, onEdit }: HabitItemProps) {
+export default function HabitItem({ habit, onToggle, onEdit, onArchive }: HabitItemProps) {
   // 1. Calculate Today's Date
   const today = new Date().toISOString().split('T')[0];
   const isCompleted = habit.completedDates?.includes(today);
@@ -51,10 +52,19 @@ export default function HabitItem({ habit, onToggle, onEdit }: HabitItemProps) {
     <>
       <View style={[styles.container, { backgroundColor: cardBackgroundColor }]}>
         
-        {/* PRESS to Toggle, LONG PRESS to Edit */}
+        {/* PRESS to Toggle, LONG PRESS to Edit... WAIT! 
+            We need to decide: 
+            - Tap = Toggle
+            - Long Press = Archive? Or Edit?
+            
+            Let's do: 
+            - Tap Text -> Edit
+            - Tap Checkbox -> Toggle
+            - Long Press Text -> Archive
+        */}
         <Pressable
-          onPress={handleToggle}
-          onLongPress={() => onEdit && onEdit(habit)}
+          onPress={() => onEdit && onEdit(habit)} // Tap text to Edit
+          onLongPress={onArchive} // Long press text to Archive
           delayLongPress={500}
           style={styles.contentArea}
           android_ripple={{ color: "#ffffff33" }}
@@ -62,7 +72,7 @@ export default function HabitItem({ habit, onToggle, onEdit }: HabitItemProps) {
           {/* Dot color */}
           <View style={[styles.dot, { backgroundColor: habit.color || '#FFF' }]} />
           
-          {/* NAME (Fixed from title to name) */}
+          {/* NAME */}
           <Text
             style={[
               styles.name, 
@@ -76,7 +86,7 @@ export default function HabitItem({ habit, onToggle, onEdit }: HabitItemProps) {
           </Text>
         </Pressable>
 
-        {/* Checkbox Area */}
+        {/* Checkbox Area (Tap to complete) */}
         <Pressable
           onPress={handleToggle}
           style={styles.checkboxArea}

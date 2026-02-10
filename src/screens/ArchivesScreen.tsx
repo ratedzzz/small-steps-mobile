@@ -1,161 +1,125 @@
-// src/screens/ArchivesScreen.tsx
-
-import React, { useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet, useColorScheme } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useApp } from "../store";
-
-const PALETTE = {
-  tealBg: "#15292E",
-  cardBg: "#074047",
-  textLight: "#EAF7F6",
-  accent: "#1DA27E",
-  gold: "#E0A800",
-};
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+// FIX: Adjust import path to step back from "screens" to "src"
+import { useApp } from '../store'; 
+// FIX: Import types explicitly to solve "implicit any" errors
+import { Habit, Goal } from '../types';
 
 export default function ArchivesScreen() {
-  const scheme = useColorScheme();
-  const theme = {
-    bg: PALETTE.tealBg,
-    cardBg: PALETTE.cardBg,
-    text: PALETTE.textLight,
+  const router = useRouter();
+  
+  // 1. Grab data and update functions from the store
+  const { habits, goals, updateHabit, updateGoal } = useApp();
+
+  // 2. Filter for archived items only
+  // Explicitly typing (h: Habit) ensures TypeScript knows what this is
+  const archivedHabits = habits.filter((h: Habit) => h.archived);
+  const archivedGoals = goals.filter((g: Goal) => g.archived);
+
+  // Helper to un-archive a habit
+  const handleRestoreHabit = (id: string) => {
+    updateHabit(id, { archived: false });
   };
 
-  const { entries = [], habits = [], goals = [] } = useApp();
-
-  // Maps for habit and goal display names
-  const habitName = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const h of habits) m.set(h.id, h.name); // use h.name not h.title
-    return m;
-  }, [habits]);
-
-  const goalName = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const g of goals) m.set(g.id, g.title); // goals have 'title'
-    return m;
-  }, [goals]);
-
-  // Group entries
-  const habitEntries = entries.filter((e) => e.habitId);
-  const journalEntries = entries.filter((e) => !e.habitId);
-
-  // Entries supporting goals
-  const goalEntries: { goal: string; entry: any }[] = [];
-  for (const goal of goals) {
-    for (const entry of entries) {
-      if (!goal.relatedHabitIds || !entry.habitId) continue;
-      if (
-        Array.isArray(goal.relatedHabitIds)
-          ? goal.relatedHabitIds.includes(entry.habitId)
-          : goal.relatedHabitIds === entry.habitId
-      ) {
-        goalEntries.push({ goal: goal.title, entry });
-      }
-    }
-  }
+  // Helper to un-archive a goal
+  const handleRestoreGoal = (id: string) => {
+    updateGoal(id, { archived: false });
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-          <Text style={styles.sectionTitle}>Archives</Text>
-          <Text style={styles.sectionDesc}>
-            Review your completed habits, goals, and journal entries.
-          </Text>
+    <View className="flex-1 bg-slate-50">
+      {/* Header */}
+      <View className="bg-white pt-12 pb-4 px-4 shadow-sm flex-row items-center border-b border-gray-100">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-bold text-gray-800">Archives</Text>
+      </View>
+
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+        
+        {/* --- HABITS SECTION --- */}
+        <View className="mb-6">
+          <Text className="text-lg font-bold text-gray-600 mb-3">Archived Habits</Text>
+          
+          {archivedHabits.length === 0 ? (
+            <View className="bg-white p-6 rounded-xl items-center border border-dashed border-gray-300">
+              <Text className="text-gray-400">No archived habits.</Text>
+            </View>
+          ) : (
+            archivedHabits.map((habit: Habit) => (
+              <View 
+                key={habit.id} 
+                className="bg-white p-4 rounded-xl mb-3 flex-row items-center justify-between shadow-sm border border-gray-100"
+              >
+                <View className="flex-row items-center flex-1">
+                  <View 
+                    style={{ backgroundColor: habit.color }} 
+                    className="w-4 h-12 rounded-full mr-4" 
+                  />
+                  <View>
+                    <Text className="text-lg font-semibold text-gray-800">{habit.name}</Text>
+                    <Text className="text-gray-400 text-xs">
+                       Completed: {habit.completedDates.length} times
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Restore Button */}
+                <TouchableOpacity 
+                  onPress={() => handleRestoreHabit(habit.id)}
+                  className="bg-gray-100 p-2 rounded-full"
+                >
+                  <Ionicons name="refresh" size={20} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </View>
 
-        {habitEntries.length > 0 && (
-          <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-            <Text style={styles.listTitle}>Habit Entries</Text>
-            {habitEntries.map((entry) => (
-              <View key={entry.id} style={styles.entryBox}>
-                <Text style={styles.entryName}>
-                  {habitName.get(entry.habitId ?? "")}
-                </Text>
-                <Text style={styles.entryDate}>
-                  {new Date(entry.date).toLocaleDateString()}
-                </Text>
-                <Text style={styles.entryText}>{entry.text}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* --- GOALS SECTION --- */}
+        <View className="mb-20">
+          <Text className="text-lg font-bold text-gray-600 mb-3">Archived Goals</Text>
 
-        {goalEntries.length > 0 && (
-          <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-            <Text style={styles.listTitle}>Goal Entries</Text>
-            {goalEntries.map(({ goal, entry }) => (
-              <View key={entry.id} style={styles.entryBox}>
-                <Text style={styles.entryName}>{goal}</Text>
-                <Text style={styles.entryDate}>
-                  {new Date(entry.date).toLocaleDateString()}
-                </Text>
-                <Text style={styles.entryText}>{entry.text}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+          {archivedGoals.length === 0 ? (
+            <View className="bg-white p-6 rounded-xl items-center border border-dashed border-gray-300">
+              <Text className="text-gray-400">No archived goals.</Text>
+            </View>
+          ) : (
+            archivedGoals.map((goal: Goal) => (
+              <View 
+                key={goal.id} 
+                className="bg-white p-4 rounded-xl mb-3 flex-row items-center justify-between shadow-sm border border-gray-100"
+              >
+                <View className="flex-row items-center flex-1">
+                  <View 
+                    style={{ backgroundColor: goal.color }} 
+                    className="w-4 h-12 rounded-full mr-4" 
+                  />
+                  <View>
+                    <Text className="text-lg font-semibold text-gray-800">{goal.title}</Text>
+                    {goal.dueDate && (
+                      <Text className="text-gray-400 text-xs">
+                        Due: {new Date(goal.dueDate).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
 
-        {journalEntries.length > 0 && (
-          <View style={[styles.card, { backgroundColor: theme.cardBg }]}>
-            <Text style={styles.listTitle}>Journal Entries</Text>
-            {journalEntries.map((entry) => (
-              <View key={entry.id} style={styles.entryBox}>
-                <Text style={styles.entryDate}>
-                  {new Date(entry.date).toLocaleDateString()}
-                </Text>
-                <Text style={styles.entryText}>{entry.text}</Text>
+                 {/* Restore Button */}
+                 <TouchableOpacity 
+                  onPress={() => handleRestoreGoal(goal.id)}
+                  className="bg-gray-100 p-2 rounded-full"
+                >
+                  <Ionicons name="refresh" size={20} color="#4B5563" />
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  card: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: PALETTE.textLight,
-    marginBottom: 8,
-  },
-  sectionDesc: { fontSize: 16, color: PALETTE.textLight },
-  listTitle: {
-    fontSize: 21,
-    fontWeight: "bold",
-    color: PALETTE.gold,
-    marginBottom: 10,
-  },
-  entryBox: {
-    backgroundColor: "rgba(0,0,0,0.07)",
-    borderRadius: 10,
-    marginBottom: 12,
-    padding: 10,
-  },
-  entryName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: PALETTE.textLight,
-  },
-  entryDate: {
-    fontSize: 13,
-    color: PALETTE.textLight,
-    marginBottom: 4,
-  },
-  entryText: { fontSize: 14, color: PALETTE.textLight },
-});

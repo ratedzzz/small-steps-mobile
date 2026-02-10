@@ -1,168 +1,186 @@
-import React, { useMemo } from "react";
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  ScrollView, 
-  Dimensions 
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import { useApp } from "../../src/store";
-import { evalBadges, BadgeWithIcon } from "../../src/badges";
-import { APP_THEME } from "../../src/theme";
-import PageFlower from "../../src/components/PageFlower"; // IMPORTED
+import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useApp, BADGE_DEFINITIONS } from '../../src/store'; 
+import { Badge } from '../../src/types';  
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient'; // Optional for nicer look
 
-const { width } = Dimensions.get('window');
-const BADGE_SIZE = (width / 3) - 24; 
-
-function BadgeItem({ badge }: { badge: BadgeWithIcon }) {
-  const isUnlocked = !!badge.unlockedAt;
+export default function BadgesScreen() {
+  // Get the *earned* badges from the store (which have an unlockedAt date)
+  const { badges: earnedBadges } = useApp();
 
   return (
-    <View style={styles.badgeWrapper}>
-      <View style={[
-        styles.medalCircle,
-        { 
-          backgroundColor: isUnlocked ? '#F1C453' : 'rgba(0,0,0,0.3)',
-          borderColor: isUnlocked ? '#E0A800' : 'rgba(255,255,255,0.1)',
-          borderWidth: isUnlocked ? 3 : 1,
-        }
-      ]}>
-        <Ionicons 
-          name={(isUnlocked ? badge.icon : "lock-closed") as any} 
-          size={32} 
-          color={isUnlocked ? '#15292E' : 'rgba(255,255,255,0.4)'} 
-        />
+    <View style={styles.container}>
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Your Achievements</Text>
+        <Text style={styles.subtitle}>Unlock badges by staying consistent!</Text>
+        <Text style={styles.counter}>
+          {earnedBadges.length} / {BADGE_DEFINITIONS.length} Unlocked
+        </Text>
       </View>
 
-      <View style={styles.textContainer}>
-        <Text style={[styles.badgeTitle, { color: isUnlocked ? '#001244' : 'rgba(0,18,68,0.5)' }]}>
-          {badge.name}
-        </Text>
-        <Text style={[styles.badgeDesc, { color: '#005086' }]}>
-          {badge.description}
-        </Text>
-        {isUnlocked && (
-          <Text style={styles.dateText}>
-             {new Date(badge.unlockedAt!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </Text>
-        )}
-      </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.grid}>
+          
+          {BADGE_DEFINITIONS.map((def) => {
+            // Check if user has earned this badge
+            const earned = earnedBadges.find(b => b.id === def.id);
+            const isUnlocked = !!earned;
+
+            return (
+              <View 
+                key={def.id} 
+                style={[
+                  styles.card, 
+                  isUnlocked ? styles.cardUnlocked : styles.cardLocked
+                ]}
+              >
+                <View style={[
+                  styles.iconContainer,
+                  isUnlocked ? styles.iconUnlocked : styles.iconLocked
+                ]}>
+                  <Ionicons 
+                    name={def.icon as any || "ribbon"} 
+                    size={32} 
+                    color={isUnlocked ? '#4F46E5' : '#9CA3AF'} 
+                  />
+                </View>
+                
+                <Text style={[
+                  styles.badgeName,
+                  isUnlocked ? styles.textUnlocked : styles.textLocked
+                ]}>
+                  {def.name}
+                </Text>
+                
+                <Text style={styles.badgeDesc}>
+                  {def.description}
+                </Text>
+
+                {isUnlocked && (
+                  <View style={styles.earnedBadge}>
+                     <Text style={styles.earnedText}>EARNED</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+
+        </View>
+
+        {/* Bottom Spacer */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
     </View>
   );
 }
 
-export default function BadgesTab() {
-  const { habits = [], goals = [], entries = [], badges = [] } = useApp();
-
-  const processedBadges = useMemo(() => {
-    return evalBadges(habits, goals, entries, badges); 
-  }, [habits, goals, entries, badges]);
-
-  const unlockedCount = processedBadges.filter(b => b.unlockedAt).length;
-  const totalCount = processedBadges.length;
-  const progressPercent = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
-
-  return (
-    <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
-      {/* ADDED FLOWER HERE */}
-      <PageFlower screen="badges" />
-
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Hall of Fame</Text>
-            <Text style={styles.headerSubtitle}>
-              You have unlocked {unlockedCount} of {totalCount} badges
-            </Text>
-            
-            <View style={styles.progressBarBg}>
-              <View 
-                style={[
-                  styles.progressBarFill, 
-                  { width: `${progressPercent}%`, backgroundColor: '#001244' } 
-                ]} 
-              />
-            </View>
-          </View>
-
-          <View style={styles.grid}>
-            {processedBadges.map((badge) => (
-              <BadgeItem key={badge.id} badge={badge} />
-            ))}
-          </View>
-
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
-  );
-}
-
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  header: { padding: 24, alignItems: 'center' },
-  headerTitle: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  title: {
     fontSize: 28,
     fontWeight: '800',
-    marginBottom: 8,
-    color: '#001244',
+    color: '#0F172A',
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 14,
-    color: '#005086',
-    marginBottom: 20,
-    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 4,
   },
-  progressBarBg: {
-    width: '100%',
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    overflow: 'hidden',
+  counter: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4F46E5',
   },
-  progressBarFill: { height: '100%', borderRadius: 5 },
+  scroll: {
+    flex: 1,
+    padding: 16,
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 10,
+    justifyContent: 'space-between',
   },
-  badgeWrapper: {
-    width: BADGE_SIZE,
+  card: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 4,
-  },
-  medalCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    borderWidth: 1,
   },
-  textContainer: { alignItems: 'center' },
-  badgeTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 4,
+  cardUnlocked: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E0E7FF',
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  badgeDesc: {
-    fontSize: 10,
-    textAlign: 'center',
-    lineHeight: 14,
-    marginBottom: 2,
+  cardLocked: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
     opacity: 0.8,
   },
-  dateText: {
-    fontSize: 9,
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  iconUnlocked: {
+    backgroundColor: '#EEF2FF',
+  },
+  iconLocked: {
+    backgroundColor: '#E2E8F0',
+  },
+  badgeName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  textUnlocked: {
+    color: '#1E293B',
+  },
+  textLocked: {
+    color: '#94A3B8',
+  },
+  badgeDesc: {
+    fontSize: 11,
+    textAlign: 'center',
+    color: '#64748B',
+    lineHeight: 14,
+  },
+  earnedBadge: {
+    marginTop: 8,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  earnedText: {
+    fontSize: 10,
     fontWeight: 'bold',
-    color: '#001244',
-    marginTop: 2,
+    color: '#166534',
   }
 });

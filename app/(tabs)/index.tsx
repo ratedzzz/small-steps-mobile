@@ -81,9 +81,14 @@ export default function HomeScreen() {
   // Today's Date (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
 
+  // --- FILTERING (Hide Archived Items) ---
+  const activeHabits = habits.filter((h) => !h.archived);
+  const activeGoals = goals.filter((g) => !g.archived);
+
+  // Calculate progress based on ACTIVE habits only
   const completedToday = useMemo(() => {
-    return habits.filter((h) => h.completedDates?.includes(today)).length;
-  }, [habits, today]);
+    return activeHabits.filter((h) => h.completedDates?.includes(today)).length;
+  }, [activeHabits, today]);
 
   // --- AVATAR LOGIC ---
   const handlePickAvatar = async () => {
@@ -128,7 +133,6 @@ export default function HomeScreen() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // The _layout.tsx will automatically detect this and send you to Login
     } catch (e) {
       console.error(e);
     }
@@ -142,6 +146,37 @@ export default function HomeScreen() {
   const handleEditHabit = (habit: Habit) => {
     setSelectedHabit(habit);
     setShowAddHabit(true);
+  };
+
+  // --- NEW: Archive Handlers ---
+  const handleArchiveHabit = (id: string) => {
+    Alert.alert(
+      "Archive Habit",
+      "Are you sure? This will move to the Archives screen.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Archive", 
+          style: "destructive", 
+          onPress: () => updateHabit(id, { archived: true }) 
+        }
+      ]
+    );
+  };
+
+  const handleArchiveGoal = (id: string) => {
+    Alert.alert(
+      "Archive Goal",
+      "Are you sure? This will move to the Archives screen.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Archive", 
+          style: "destructive", 
+          onPress: () => updateGoal(id, { archived: true }) 
+        }
+      ]
+    );
   };
 
   const handleSaveHabit = (partial: Partial<Habit>) => {
@@ -196,7 +231,7 @@ export default function HomeScreen() {
                 })}
               </Text>
               
-              {/* LOGOUT BUTTON - More prominent now */}
+              {/* LOGOUT BUTTON */}
               <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
                 <Ionicons name="log-out-outline" size={16} color="#005086" />
                 <Text style={styles.logoutText}>Sign Out</Text>
@@ -233,11 +268,11 @@ export default function HomeScreen() {
           </View>
 
           {/* Progress Summary */}
-          {habits.length > 0 && (
+          {activeHabits.length > 0 && (
             <View style={styles.glassCard}>
               <Text style={styles.progressTitle}>Habits Completed Today</Text>
               <Text style={styles.progressNumber}>
-                {completedToday}/{habits.length}
+                {completedToday}/{activeHabits.length}
               </Text>
             </View>
           )}
@@ -260,19 +295,22 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
-            {habits.length === 0 ? (
+            {activeHabits.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>
                   No habits yet. Start by adding your first small step!
                 </Text>
               </View>
             ) : (
-              habits.map((habit) => (
+              // Mapped over Active Habits
+              activeHabits.map((habit) => (
                 <HabitItem
                   key={habit.id}
                   habit={habit}
                   onToggle={handleToggle}
                   onEdit={handleEditHabit} 
+                  // Pass the archive handler (Note: HabitItem needs to accept this!)
+                  onArchive={() => handleArchiveHabit(habit.id)}
                 />
               ))
             )}
@@ -296,14 +334,15 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
-            {goals.length === 0 ? (
+            {activeGoals.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>
                   Set a goal to work towards!
                 </Text>
               </View>
             ) : (
-              goals.map((goal) => (
+              // Mapped over Active Goals
+              activeGoals.map((goal) => (
                 <GoalItem
                   key={goal.id}
                   goal={goal}
@@ -312,6 +351,8 @@ export default function HomeScreen() {
                     setSelectedGoal(g);
                     setShowAddGoal(true);
                   }}
+                  // Pass the archive handler (Note: GoalItem needs to accept this!)
+                  onArchive={() => handleArchiveGoal(goal.id)}
                 />
               ))
             )}
