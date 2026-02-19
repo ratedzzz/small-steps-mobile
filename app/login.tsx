@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../src/lib/firebase';
 import { useApp } from '../src/store';
 import { APP_THEME } from '../src/theme';
@@ -16,6 +16,18 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const { setUser, pushLocalToFirebase, syncFromFirebase } = useApp();
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      return Alert.alert("Reset Password", "Please enter your email address first so we can send you the link.");
+    }
+    try {
+        await sendPasswordResetEmail(auth, email);
+        Alert.alert("Email Sent", "Check your inbox (and spam folder) for a password reset link.");
+    } catch (error: any) {
+        Alert.alert("Error", error.message);
+    }
+  };
 
   const handleAuth = async () => {
     if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
@@ -86,6 +98,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            keyboardType="email-address"
           />
           
           <TextInput
@@ -96,6 +109,13 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
           />
+
+          {/* Forgot Password Link (Only shows on Login) */}
+          {isLogin && (
+            <Pressable onPress={handleForgotPassword} style={styles.forgotButton}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+            </Pressable>
+          )}
 
           <Pressable onPress={handleAuth} style={styles.button}>
             {loading ? <ActivityIndicator color="#FFF" /> : (
@@ -136,6 +156,15 @@ const styles = StyleSheet.create({
     color: '#001244',
     borderWidth: 1,
     borderColor: '#e1e1e1'
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotText: {
+    color: '#005086',
+    fontWeight: '600',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#001244',

@@ -1,78 +1,73 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useApp, BADGE_DEFINITIONS } from '../../src/store'; 
-import { Badge } from '../../src/types';  
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useApp, BADGE_DEFINITIONS } from '../../src/store';
+import { APP_THEME } from '../../src/theme'; 
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient'; // Optional for nicer look
+import PageFlower from '../../src/components/PageFlower'; 
 
 export default function BadgesScreen() {
-  // Get the *earned* badges from the store (which have an unlockedAt date)
-  const { badges: earnedBadges } = useApp();
+  const { badges, checkBadges } = useApp();
+
+  // Force a check when the screen loads to ensure badges are up to date
+  useEffect(() => {
+    checkBadges();
+  }, []);
+
+  const unlockedIds = badges.map(b => b.id);
+
+  const renderBadge = ({ item }: { item: any }) => {
+    const isUnlocked = unlockedIds.includes(item.id);
+
+    return (
+      <View style={[styles.badgeCard, !isUnlocked && styles.lockedCard]}>
+        <View style={[styles.iconContainer, isUnlocked ? styles.unlockedIcon : styles.lockedIcon]}>
+          <Ionicons 
+            name={item.icon || "trophy"} 
+            size={32} 
+            color={isUnlocked ? "#FFF" : "#A0A0A0"} 
+          />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={[styles.badgeName, !isUnlocked && styles.lockedText]}>
+            {item.name}
+          </Text>
+          <Text style={styles.badgeDesc}>
+            {isUnlocked ? item.description : "Keep playing to unlock..."}
+          </Text>
+          {isUnlocked && (
+            <View style={styles.tag}>
+                <Text style={styles.tagText}>EARNED</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
+      {/* 1. The Mandala Flower (Background) */}
+      <PageFlower screen="badges" />
+
+      {/* 2. Gradient Overlay for Header */}
+      <LinearGradient
+        colors={[APP_THEME.mainGradient[0], 'transparent']}
+        style={styles.headerGradient}
+      />
       
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Your Achievements</Text>
-        <Text style={styles.subtitle}>Unlock badges by staying consistent!</Text>
-        <Text style={styles.counter}>
-          {earnedBadges.length} / {BADGE_DEFINITIONS.length} Unlocked
-        </Text>
+        <Text style={styles.title}>Achievements</Text>
+        <Text style={styles.subtitle}>{badges.length} / {BADGE_DEFINITIONS.length} Unlocked</Text>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.grid}>
-          
-          {BADGE_DEFINITIONS.map((def) => {
-            // Check if user has earned this badge
-            const earned = earnedBadges.find(b => b.id === def.id);
-            const isUnlocked = !!earned;
-
-            return (
-              <View 
-                key={def.id} 
-                style={[
-                  styles.card, 
-                  isUnlocked ? styles.cardUnlocked : styles.cardLocked
-                ]}
-              >
-                <View style={[
-                  styles.iconContainer,
-                  isUnlocked ? styles.iconUnlocked : styles.iconLocked
-                ]}>
-                  <Ionicons 
-                    name={def.icon as any || "ribbon"} 
-                    size={32} 
-                    color={isUnlocked ? '#4F46E5' : '#9CA3AF'} 
-                  />
-                </View>
-                
-                <Text style={[
-                  styles.badgeName,
-                  isUnlocked ? styles.textUnlocked : styles.textLocked
-                ]}>
-                  {def.name}
-                </Text>
-                
-                <Text style={styles.badgeDesc}>
-                  {def.description}
-                </Text>
-
-                {isUnlocked && (
-                  <View style={styles.earnedBadge}>
-                     <Text style={styles.earnedText}>EARNED</Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
-
-        </View>
-
-        {/* Bottom Spacer */}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      <FlatList
+        data={BADGE_DEFINITIONS}
+        renderItem={renderBadge}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -80,107 +75,96 @@ export default function BadgesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: APP_THEME.solidBackground, // Navy Blue
+  },
+  headerGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 150,
   },
   header: {
     paddingTop: 60,
+    paddingHorizontal: 20,
     paddingBottom: 20,
-    paddingHorizontal: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    zIndex: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FDF6E3', // Cream/White
+    marginBottom: 5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 4,
+    fontSize: 16,
+    color: '#8AB4F8', // Light Blue
+    fontWeight: '600',
   },
-  counter: {
-    marginTop: 10,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4F46E5',
+  listContent: {
+    padding: 20,
+    paddingBottom: 100,
   },
-  scroll: {
-    flex: 1,
-    padding: 16,
-  },
-  grid: {
+  badgeCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    aspectRatio: 1,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassmorphism effect
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  cardUnlocked: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E0E7FF',
-    shadowColor: "#4F46E5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  cardLocked: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#E2E8F0',
-    opacity: 0.8,
+  lockedCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Darker when locked
+    borderColor: 'transparent',
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginRight: 16,
   },
-  iconUnlocked: {
-    backgroundColor: '#EEF2FF',
+  unlockedIcon: {
+    backgroundColor: '#F1C453', // Gold
+    shadowColor: "#F1C453",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
-  iconLocked: {
-    backgroundColor: '#E2E8F0',
+  lockedIcon: {
+    backgroundColor: '#3A4050', // Gray-Blue
+  },
+  textContainer: {
+    flex: 1,
   },
   badgeName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
+    color: '#FFF',
     marginBottom: 4,
-    textAlign: 'center',
   },
-  textUnlocked: {
-    color: '#1E293B',
-  },
-  textLocked: {
-    color: '#94A3B8',
+  lockedText: {
+    color: '#A0A0A0',
   },
   badgeDesc: {
-    fontSize: 11,
-    textAlign: 'center',
-    color: '#64748B',
-    lineHeight: 14,
+    fontSize: 14,
+    color: '#CCC',
+    lineHeight: 20,
   },
-  earnedBadge: {
+  tag: {
     marginTop: 8,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#1DA27E', // Green
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  earnedText: {
+  tagText: {
+    color: '#FFF',
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#166534',
   }
 });

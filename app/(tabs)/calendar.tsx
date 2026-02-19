@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient'; 
@@ -6,7 +6,7 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { format, parse } from 'date-fns';
 
 import { useApp } from '../../src/store';
-import { Habit, Goal } from '../../src/types'; // Using the restored types file
+import { Habit, Goal } from '../../src/types'; 
 import { APP_THEME } from '../../src/theme'; 
 
 // Import your custom components
@@ -15,7 +15,7 @@ import AddGoalModal from '../../src/components/AddGoalModal';
 import PageFlower from '../../src/components/PageFlower';
 
 export default function CalendarTab() {
-  const darkMode = true; // Defaulting to dark mode
+  const darkMode = true; 
   const { entries = [], habits = [], goals = [], updateHabit, deleteHabit, updateGoal, deleteGoal, addHabit, addGoal } = useApp();
   
   // Helper for today's date
@@ -51,6 +51,7 @@ export default function CalendarTab() {
       const dates = habit.completedDates || [];
       dates.forEach((d: string) => {
         initDate(d);
+        // Prevent duplicate dots for the same habit
         if (!marks[d].dots.some((dot: any) => dot.key === habit.id)) {
           marks[d].dots.push({ key: habit.id, color: habit.color });
         }
@@ -63,8 +64,7 @@ export default function CalendarTab() {
       const end = goal.dueDate;
       
       initDate(start);
-      marks[start].goalColor = goal.color;
-      
+      // Only color the background if it's the specific due date or start date
       if (end) {
         initDate(end);
         marks[end].goalColor = goal.color;
@@ -77,16 +77,20 @@ export default function CalendarTab() {
   // --- 2. FILTER DATA FOR SELECTED DAY ---
   const activeItems = useMemo(() => {
     const dayHabits = habits.filter(h => (h.completedDates || []).includes(selectedDate));
+    
     const dayGoals = goals.filter(g => {
-      const start = g.createdAt ? g.createdAt.split('T')[0] : today;
-      return start === selectedDate || g.dueDate === selectedDate;
+        // Show goal if today is the due date
+        return g.dueDate === selectedDate;
     });
-    const journalEntry = entries.find(e => e.date === selectedDate && !e.habitId);
+
+    // Updated 'text' -> 'content' to match types.ts
+    const journalEntry = entries.find(e => e.date === selectedDate);
+    
     return { dayHabits, dayGoals, journalEntry };
   }, [selectedDate, habits, goals, entries, today]);
 
-  // --- 3. CUSTOM DAY COMPONENT ---
-  const CustomDay = ({ date, state, marking }: { date?: DateData, state?: string, marking?: any }) => {
+  // --- 3. CUSTOM DAY COMPONENT (Memoized) ---
+  const CustomDay = useCallback(({ date, state, marking }: { date?: DateData, state?: string, marking?: any }) => {
     if (!date) return <View />;
 
     const isSelected = date.dateString === selectedDate;
@@ -94,9 +98,9 @@ export default function CalendarTab() {
     const goalColor = marking?.goalColor;
     const dots = marking?.dots || [];
 
-    // Fallback colors
-    const accentColor = APP_THEME.accent || '#88C0D0'; 
-    const textColor = goalColor ? '#000000' : (state === 'disabled' ? '#475569' : '#FFFFFF');
+    // Colors
+    const accentColor = APP_THEME.activeTab; 
+    const textColor = goalColor ? '#000' : (state === 'disabled' ? '#475569' : '#FFFFFF');
 
     return (
       <TouchableOpacity 
@@ -130,10 +134,10 @@ export default function CalendarTab() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [selectedDate, today]);
 
   return (
-    <LinearGradient colors={APP_THEME.mainGradient || ['#2E3440', '#3B4252']} style={{ flex: 1 }}>
+    <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
       
       {/* FLOWER COMPONENT */}
       <PageFlower screen="calendar" />
@@ -142,17 +146,16 @@ export default function CalendarTab() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* CALENDAR CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
+          <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
             <Calendar
               current={selectedDate}
-              dayComponent={({ date, state, marking }) => (
-                <CustomDay date={date} state={state} marking={marking} />
-              )}
+              // We pass the function reference, not the component itself
+              dayComponent={CustomDay}
               markedDates={markedDates}
               theme={{
                 calendarBackground: 'transparent',
                 textSectionTitleColor: '#b6c1cd',
-                arrowColor: APP_THEME.accent || '#88C0D0', 
+                arrowColor: APP_THEME.activeTab, 
                 monthTextColor: '#ffffff',
                 textMonthFontWeight: 'bold',
                 textMonthFontSize: 16,
@@ -161,7 +164,7 @@ export default function CalendarTab() {
           </View>
 
           {/* DETAILS CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
+          <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
             <Text style={[styles.sectionTitle, { color: '#FFF' }]}>
               {formattedDateTitle}
             </Text>
@@ -177,7 +180,8 @@ export default function CalendarTab() {
                 onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
               >
                 <View style={[styles.dot, { backgroundColor: h.color }]} />
-                <Text style={[styles.itemText, { color: '#FFF' }]}>{h.name}</Text>
+                {/* UPDATED: h.name -> h.title */}
+                <Text style={[styles.itemText, { color: '#FFF' }]}>{h.title}</Text>
                 <Text style={styles.checkMark}>✓</Text>
               </Pressable>
             ))}
@@ -197,23 +201,24 @@ export default function CalendarTab() {
           
           {/* JOURNAL ENTRY */}
           {activeItems.journalEntry && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440' }]}>
-              <Text style={{ color: APP_THEME.accent || '#88C0D0', fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
+            <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
+              <Text style={{ color: APP_THEME.activeTab, fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
+              {/* UPDATED: .text -> .content */}
               <Text style={{ color: '#FFF', fontStyle: 'italic', lineHeight: 22 }}>
-                "{activeItems.journalEntry.text}"
+                "{activeItems.journalEntry.content}"
               </Text>
             </View>
           )}
 
           {/* LEGEND SECTION */}
           {(habits.length > 0 || goals.length > 0) && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.solidBackground || '#2E3440', marginTop: 10 }]}>
-              <Text style={[styles.legendTitle, { color: APP_THEME.accent || '#88C0D0' }]}>Legend</Text>
+            <View style={[styles.card, { backgroundColor: APP_THEME.cardBg, marginTop: 10 }]}>
+              <Text style={[styles.legendTitle, { color: APP_THEME.activeTab }]}>Legend</Text>
               <View style={styles.legendContainer}>
                 {habits.map(h => (
                   <View key={h.id} style={styles.legendItem}>
                     <View style={[styles.dot, { backgroundColor: h.color, width: 8, height: 8 }]} />
-                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{h.name}</Text>
+                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{h.title}</Text>
                   </View>
                 ))}
                 {goals.map(g => (
