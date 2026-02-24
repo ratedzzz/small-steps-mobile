@@ -1,269 +1,284 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient'; 
-import { Calendar, DateData } from 'react-native-calendars';
-import { format, parse } from 'date-fns';
+import React, { useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Pressable,
+  TouchableOpacity,
+  Alert
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Calendar, DateData } from "react-native-calendars";
+import { useRouter } from "expo-router"; 
+import { Ionicons } from '@expo/vector-icons';
 
-import { useApp } from '../../src/store';
-import { Habit, Goal } from '../../src/types'; 
-import { APP_THEME } from '../../src/theme'; 
+// Components & Store
+import PageFlower from "../../src/components/PageFlower";
+import { useApp } from "../../src/store";
+import { APP_THEME } from "../../src/theme";
+import AddHabitModal from "../../src/components/AddHabitModal";
+import AddGoalModal from "../../src/components/AddGoalModal";
+import { Habit, Goal } from "../../src/types";
 
-// Import your custom components
-import AddHabitModal from '../../src/components/AddHabitModal';
-import AddGoalModal from '../../src/components/AddGoalModal';
-import PageFlower from '../../src/components/PageFlower';
+// --- AD BANNER ---
+const AdBanner = () => (
+  <View style={styles.adContainer}>
+    <View style={styles.adContent}>
+      <Text style={styles.adText}>ADVERTISEMENT</Text>
+    </View>
+  </View>
+);
 
-export default function CalendarTab() {
-  const darkMode = true; 
-  const { entries = [], habits = [], goals = [], updateHabit, deleteHabit, updateGoal, deleteGoal, addHabit, addGoal } = useApp();
+// --- HELPER TO GET JOURNAL PREVIEW ---
+const getJournalPreview = (text: string) => {
+  if (!text) return "";
+  const words = text.trim().split(/\s+/);
+  return words.slice(0, 2).join(" ") + (words.length > 2 ? "..." : "");
+};
+
+export default function CalendarScreen() {
+  const router = useRouter();
+  // Fixed: Changed 'journals' to 'entries' to match your store
+  const { habits, goals, entries, deleteHabit, updateHabit, deleteGoal, updateGoal } = useApp();
   
-  // Helper for today's date
-  const getLocalDate = () => new Date().toISOString().split('T')[0];
-  const today = useMemo(() => getLocalDate(), []);
-  const [selectedDate, setSelectedDate] = useState<string>(today);
-
-  // Modals State
-  const [showHabitModal, setShowHabitModal] = useState(false);
+  // State
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
-  const [showGoalModal, setShowGoalModal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [showHabitModal, setShowHabitModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
-  // --- HELPER: Format Date for Display ---
-  const formattedDateTitle = useMemo(() => {
-    try {
-      const dateObj = parse(selectedDate, 'yyyy-MM-dd', new Date());
-      return format(dateObj, 'EEEE, MMMM d');
-    } catch (e) {
-      return selectedDate;
-    }
-  }, [selectedDate]);
+  // --- FILTER DATA FOR SELECTED DATE ---
+  const completedHabits = habits.filter(h => h.completedDates?.includes(selectedDate) && !h.archived);
+  const uncompletedHabits = habits.filter(h => !h.completedDates?.includes(selectedDate) && !h.archived);
+  const journalEntry = entries.find(j => j.date === selectedDate);
 
-  // --- 1. CALCULATE MARKED DATES ---
-  const markedDates = useMemo(() => {
-    const marks: Record<string, any> = {};
-    const initDate = (date: string) => {
-      if (!marks[date]) marks[date] = { dots: [], goalColor: null };
-    };
-
-    // Habits -> Dots
-    habits.forEach((habit: Habit) => {
-      const dates = habit.completedDates || [];
-      dates.forEach((d: string) => {
-        initDate(d);
-        // Prevent duplicate dots for the same habit
-        if (!marks[d].dots.some((dot: any) => dot.key === habit.id)) {
-          marks[d].dots.push({ key: habit.id, color: habit.color });
-        }
-      });
-    });
-
-    // Goals -> Background Color
-    goals.forEach((goal: Goal) => {
-      const start = goal.createdAt ? goal.createdAt.split('T')[0] : today;
-      const end = goal.dueDate;
-      
-      initDate(start);
-      // Only color the background if it's the specific due date or start date
-      if (end) {
-        initDate(end);
-        marks[end].goalColor = goal.color;
-      }
-    });
-
-    return marks;
-  }, [habits, goals, today]);
-
-  // --- 2. FILTER DATA FOR SELECTED DAY ---
-  const activeItems = useMemo(() => {
-    const dayHabits = habits.filter(h => (h.completedDates || []).includes(selectedDate));
-    
-    const dayGoals = goals.filter(g => {
-        // Show goal if today is the due date
-        return g.dueDate === selectedDate;
-    });
-
-    // Updated 'text' -> 'content' to match types.ts
-    const journalEntry = entries.find(e => e.date === selectedDate);
-    
-    return { dayHabits, dayGoals, journalEntry };
-  }, [selectedDate, habits, goals, entries, today]);
-
-  // --- 3. CUSTOM DAY COMPONENT (Memoized) ---
-  const CustomDay = useCallback(({ date, state, marking }: { date?: DateData, state?: string, marking?: any }) => {
+  // --- CUSTOM DAY COMPONENT ---
+  const CustomDay = ({ date, state }: { date?: DateData; state?: string }) => {
     if (!date) return <View />;
-
+    
     const isSelected = date.dateString === selectedDate;
-    const isToday = date.dateString === today;
-    const goalColor = marking?.goalColor;
-    const dots = marking?.dots || [];
+    const isToday = date.dateString === new Date().toISOString().split("T")[0];
+    
+    // Habit Dots
+    const habitDots = habits
+      .filter(h => h.completedDates?.includes(date.dateString) && !h.archived)
+      .map(h => h.color);
+      
+    // Goal Logic: [ Start, ] End, - Middle
+    const activeGoals = goals.filter(g => !g.archived && g.dueDate);
+    const goalMarkers = activeGoals.map(g => {
+        // 1. If this is the Due Date -> `]`
+        if (g.dueDate === date.dateString) return { char: ']', color: g.color };
+        
+        // 2. If this is the Creation Date (fallback to Today if missing) -> `[`
+        const createdDate = g.createdAt ? g.createdAt.split('T')[0] : '';
+        if (createdDate === date.dateString) return { char: '[', color: g.color };
 
-    // Colors
-    const accentColor = APP_THEME.activeTab; 
-    const textColor = goalColor ? '#000' : (state === 'disabled' ? '#475569' : '#FFFFFF');
+        // 3. If in between -> `-` (Slash/Dash)
+        if (createdDate && g.dueDate) {
+            if (date.dateString > createdDate && date.dateString < g.dueDate) {
+                return { char: '—', color: g.color };
+            }
+        }
+        return null;
+    }).filter(Boolean) as { char: string, color: string }[];
+
+    // Limit goal markers to avoid UI explosion (max 3)
+    const displayGoals = goalMarkers.slice(0, 3); 
 
     return (
       <TouchableOpacity 
         onPress={() => setSelectedDate(date.dateString)}
-        activeOpacity={0.7}
         style={[
-          styles.dayContainer,
-          goalColor && { backgroundColor: goalColor },
-          isSelected && { borderWidth: 2, borderColor: accentColor },
+            styles.dayContainer, 
+            isSelected && styles.daySelected,
+            isToday && !isSelected && styles.dayToday
         ]}
       >
+        {/* Goal Markers Above */}
+        <View style={styles.goalOverlay}>
+            {displayGoals.map((m, i) => (
+                <Text key={i} style={{ color: m.color, fontSize: 10, fontWeight: 'bold', lineHeight: 10 }}>
+                    {m.char}
+                </Text>
+            ))}
+        </View>
+
         <Text style={[
-          styles.dayText,
-          { color: textColor },
-          isToday && !goalColor && { color: accentColor, fontWeight: 'bold' }
+            styles.dayText, 
+            state === 'disabled' ? styles.dayTextDisabled : {},
+            isSelected ? styles.dayTextSelected : {}
         ]}>
           {date.day}
         </Text>
 
-        <View style={styles.dotsRow}>
-          {dots.map((dot: any, index: number) => (
-            <View 
-              key={index} 
-              style={[
-                styles.miniDot, 
-                { backgroundColor: dot.color },
-                goalColor && { borderColor: 'rgba(0,0,0,0.2)', borderWidth: 0.5 } 
-              ]} 
-            />
+        {/* Habit Dots Below */}
+        <View style={styles.dotRow}>
+          {habitDots.slice(0, 4).map((color, i) => (
+            <View key={i} style={[styles.dot, { backgroundColor: color }]} />
           ))}
         </View>
       </TouchableOpacity>
     );
-  }, [selectedDate, today]);
+  };
 
   return (
     <LinearGradient colors={APP_THEME.mainGradient} style={{ flex: 1 }}>
-      
-      {/* FLOWER COMPONENT */}
       <PageFlower screen="calendar" />
-
+      
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-          {/* CALENDAR CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
-            <Calendar
-              current={selectedDate}
-              // We pass the function reference, not the component itself
-              dayComponent={CustomDay}
-              markedDates={markedDates}
-              theme={{
-                calendarBackground: 'transparent',
-                textSectionTitleColor: '#b6c1cd',
-                arrowColor: APP_THEME.activeTab, 
-                monthTextColor: '#ffffff',
-                textMonthFontWeight: 'bold',
-                textMonthFontSize: 16,
-              }}
-            />
-          </View>
-
-          {/* DETAILS CARD */}
-          <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
-            <Text style={[styles.sectionTitle, { color: '#FFF' }]}>
-              {formattedDateTitle}
-            </Text>
-
-            {activeItems.dayHabits.length === 0 && activeItems.dayGoals.length === 0 && !activeItems.journalEntry && (
-              <Text style={{ color: "#b4d2cf", fontStyle: 'italic', marginBottom: 10 }}>No activity recorded.</Text>
-            )}
-
-            {activeItems.dayHabits.map(h => (
-              <Pressable 
-                key={h.id} 
-                style={[styles.itemRow, { backgroundColor: 'rgba(255,255,255,0.05)' }]} 
-                onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
-              >
-                <View style={[styles.dot, { backgroundColor: h.color }]} />
-                {/* UPDATED: h.name -> h.title */}
-                <Text style={[styles.itemText, { color: '#FFF' }]}>{h.title}</Text>
-                <Text style={styles.checkMark}>✓</Text>
-              </Pressable>
-            ))}
-
-            {activeItems.dayGoals.map(g => (
-              <Pressable 
-                key={g.id} 
-                style={[styles.itemRow, { backgroundColor: 'rgba(255,255,255,0.05)' }]} 
-                onPress={() => { setSelectedGoal(g); setShowGoalModal(true); }}
-              >
-                <View style={[styles.square, { backgroundColor: g.color }]} />
-                <Text style={[styles.itemText, { color: '#FFF' }]}>{g.title}</Text>
-                <Text style={styles.goalLabel}>GOAL</Text>
-              </Pressable>
-            ))}
-          </View>
-          
-          {/* JOURNAL ENTRY */}
-          {activeItems.journalEntry && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.cardBg }]}>
-              <Text style={{ color: APP_THEME.activeTab, fontWeight: 'bold', marginBottom: 8, fontSize: 16 }}>Today's Journal</Text>
-              {/* UPDATED: .text -> .content */}
-              <Text style={{ color: '#FFF', fontStyle: 'italic', lineHeight: 22 }}>
-                "{activeItems.journalEntry.content}"
-              </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+            
+            {/* 1. CALENDAR BOX */}
+            <View style={styles.calendarWrapper}>
+                <Calendar
+                    current={selectedDate}
+                    onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+                    dayComponent={({ date, state }: any) => <CustomDay date={date} state={state} />}
+                    theme={{
+                        calendarBackground: 'transparent',
+                        textSectionTitleColor: '#22d3ee', // Cyan headers
+                        monthTextColor: '#FFFFFF',
+                        arrowColor: '#22d3ee',
+                        textDayHeaderFontWeight: 'bold'
+                    }}
+                    enableSwipeMonths
+                />
             </View>
-          )}
 
-          {/* LEGEND SECTION */}
-          {(habits.length > 0 || goals.length > 0) && (
-            <View style={[styles.card, { backgroundColor: APP_THEME.cardBg, marginTop: 10 }]}>
-              <Text style={[styles.legendTitle, { color: APP_THEME.activeTab }]}>Legend</Text>
-              <View style={styles.legendContainer}>
-                {habits.map(h => (
-                  <View key={h.id} style={styles.legendItem}>
-                    <View style={[styles.dot, { backgroundColor: h.color, width: 8, height: 8 }]} />
-                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{h.title}</Text>
-                  </View>
-                ))}
-                {goals.map(g => (
-                  <View key={g.id} style={styles.legendItem}>
-                    <View style={[styles.square, { backgroundColor: g.color, width: 8, height: 8 }]} />
-                    <Text style={[styles.legendText, { color: '#b4d2cf' }]} numberOfLines={1}>{g.title}</Text>
-                  </View>
-                ))}
-              </View>
+            {/* 2. HABITS COMPLETED TODAY */}
+            <View style={styles.sectionBox}>
+                <Text style={styles.sectionTitle}>Habits Completed Today</Text>
+                {completedHabits.length === 0 ? (
+                    <Text style={styles.emptyText}>Nothing completed yet.</Text>
+                ) : (
+                    completedHabits.map(h => (
+                        <Pressable 
+                            key={h.id} 
+                            style={styles.itemRow}
+                            onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
+                        >
+                            <View style={[styles.largeDot, { backgroundColor: h.color }]} />
+                            <Text style={styles.itemText}>
+                                {h.title || (h as any).name || "Untitled"}
+                            </Text>
+                            <Ionicons name="checkmark-circle" size={20} color={h.color} />
+                        </Pressable>
+                    ))
+                )}
             </View>
-          )}
+
+            {/* 3. JOURNAL ENTRY BOX */}
+            <TouchableOpacity 
+                style={styles.journalBox}
+                onPress={() => {
+                   router.push('/journal'); 
+                }}
+            >
+                <View style={styles.journalHeader}>
+                    <Text style={styles.journalTitle}>Today's Journal</Text>
+                    <Ionicons name="pencil" size={16} color="#22d3ee" />
+                </View>
+                {/* Fixed: Use .content instead of .text */}
+                <Text style={styles.journalPreview}>
+                    {journalEntry 
+                        ? `"${getJournalPreview(journalEntry.content)}"` 
+                        : "No journal entry today"}
+                </Text>
+            </TouchableOpacity>
+
+            {/* 4. HABITS NOT COMPLETED */}
+            <View style={styles.sectionBox}>
+                <Text style={styles.sectionTitle}>Habits Not Yet Completed</Text>
+                {uncompletedHabits.length === 0 ? (
+                    <Text style={styles.emptyText}>All done for the day!</Text>
+                ) : (
+                    uncompletedHabits.map(h => (
+                        <Pressable 
+                            key={h.id} 
+                            style={styles.itemRow}
+                            onPress={() => { setSelectedHabit(h); setShowHabitModal(true); }}
+                        >
+                            <View style={[styles.largeDot, { backgroundColor: h.color }]} />
+                            <Text style={styles.itemText}>
+                                {h.title || (h as any).name || "Untitled"}
+                            </Text>
+                            {/* Empty circle for uncompleted */}
+                            <View style={[styles.circleOutline, { borderColor: h.color }]} />
+                        </Pressable>
+                    ))
+                )}
+            </View>
+
+            {/* 5. LEGEND */}
+            <View style={styles.legendBox}>
+                <Text style={styles.legendHeader}>LEGEND</Text>
+                
+                <View style={styles.legendRow}>
+                    {/* Column 1: Habits */}
+                    <View style={styles.legendCol}>
+                        <Text style={styles.legendSubHeader}>Habits</Text>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.dot, { backgroundColor: '#F1C453', width: 8, height: 8 }]} />
+                            <Text style={styles.legendText}>Completed</Text>
+                        </View>
+                        {/* Dot under Day explanation */}
+                        <View style={styles.legendItem}>
+                            <View style={[styles.dot, { backgroundColor: '#F1C453', width: 4, height: 4, marginTop: 4 }]} />
+                            <Text style={styles.legendText}>Under Date = Done</Text>
+                        </View>
+                    </View>
+
+                    {/* Column 2: Goals */}
+                    <View style={styles.legendCol}>
+                        <Text style={styles.legendSubHeader}>Goals</Text>
+                        <View style={styles.legendItem}>
+                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>[</Text>
+                            <Text style={styles.legendText}>Start</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>—</Text>
+                            <Text style={styles.legendText}>In Progress</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>]</Text>
+                            <Text style={styles.legendText}>Completed/Due</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
 
         </ScrollView>
+        
+        {/* AD BANNER */}
+        <AdBanner />
 
-        {/* MODALS connected to Store Actions */}
-        <AddHabitModal 
-          visible={showHabitModal} 
-          onClose={() => setShowHabitModal(false)} 
-          darkMode={darkMode} 
-          habit={selectedHabit} 
-          onSave={(p: any) => { 
-            if(p.id) updateHabit(p.id, p); 
-            else addHabit(p); 
-            setShowHabitModal(false); 
-          }} 
-          onDelete={(id: string) => { 
-            deleteHabit(id); 
-            setShowHabitModal(false); 
-          }} 
+        {/* MODALS */}
+        <AddHabitModal
+          visible={showHabitModal}
+          onClose={() => setShowHabitModal(false)}
+          darkMode={true}
+          habit={selectedHabit}
+          onSave={(updated) => {
+            if (selectedHabit) updateHabit(selectedHabit.id, updated);
+            setShowHabitModal(false);
+          }}
+          onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }}
         />
-
-        <AddGoalModal 
+        
+        <AddGoalModal
           visible={showGoalModal} 
-          onClose={() => setShowGoalModal(false)} 
-          darkMode={darkMode} 
-          goal={selectedGoal} 
-          onSave={(p: any) => { 
-            if(p.id) updateGoal(p.id, p); 
-            else addGoal(p); 
-            setShowGoalModal(false); 
-          }} 
-          onDelete={(id: string) => { 
-            deleteGoal(id); 
-            setShowGoalModal(false); 
-          }} 
+          onClose={() => setShowGoalModal(false)}
+          darkMode={true}
+          goal={selectedGoal}
+          onSave={(updated) => {
+             if (selectedGoal) updateGoal(selectedGoal.id, updated);
+             setShowGoalModal(false);
+          }}
+          onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }}
         />
 
       </SafeAreaView>
@@ -272,78 +287,209 @@ export default function CalendarTab() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100, gap: 16 },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
+  scrollContent: { padding: 16, paddingBottom: 100 }, // Space for Ad
   
-  card: { 
-    borderRadius: 20, 
-    padding: 16, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.2, 
-    shadowRadius: 8, 
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4 
+  // Custom Calendar Styling
+  calendarWrapper: {
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "#22d3ee",
   },
-  
-  sectionTitle: { fontSize: 20, fontWeight: '800', marginBottom: 16, letterSpacing: 0.5 },
-  
-  itemRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 10,
-    padding: 14,
-    borderRadius: 12,
-  },
-  
-  dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  square: { width: 12, height: 12, borderRadius: 3, marginRight: 12 },
-  itemText: { fontSize: 16, fontWeight: '600', flex: 1 },
-  checkMark: { color: '#4ade80', fontWeight: 'bold', fontSize: 16 },
-  goalLabel: { color: '#F1C453', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
-
   dayContainer: {
     width: 32,
-    height: 32,
-    justifyContent: 'center',
+    height: 44, // Taller to fit markers above/below
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  daySelected: {
+    backgroundColor: 'rgba(34, 211, 238, 0.2)', // Cyan tint
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#22d3ee'
+  },
+  dayToday: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
   },
   dayText: {
+    color: '#E2E8F0',
+    fontWeight: '600',
     fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2, 
   },
-  dotsRow: {
+  dayTextSelected: {
+    color: '#22d3ee',
+    fontWeight: 'bold',
+  },
+  dayTextDisabled: {
+    color: '#475569',
+  },
+  dotRow: {
     flexDirection: 'row',
     gap: 2,
-    position: 'absolute',
-    bottom: 3,
+    marginTop: 2,
+    height: 4,
   },
-  miniDot: {
+  dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
   },
-  legendTitle: {
+  goalOverlay: {
+    flexDirection: 'row',
+    position: 'absolute',
+    top: 2,
+    gap: 1,
+  },
+
+  // Section Boxes (Consistent with Home)
+  sectionBox: {
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#22d3ee",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    marginBottom: 12,
+  },
+  emptyText: {
+    color: '#94A3B8',
+    fontStyle: 'italic',
     fontSize: 14,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  itemText: {
+    flex: 1,
+    color: '#FFF',
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  largeDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  circleOutline: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+  },
+
+  // Journal Box (Specific Style)
+  journalBox: {
+    backgroundColor: '#F1C453', // Yellow accent from your palette
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    elevation: 3,
+  },
+  journalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  journalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#001244',
+  },
+  journalPreview: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    color: '#001244',
+    opacity: 0.8,
+  },
+
+  // Legend
+  legendBox: {
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  legendHeader: {
+    color: '#94A3B8',
+    fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 10,
-    textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  legendContainer: {
+  legendRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+  },
+  legendCol: {
+    flex: 1,
+  },
+  legendSubHeader: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    marginBottom: 6,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    minWidth: '40%',
+    height: 20,
   },
   legendText: {
+    color: '#CBD5E1',
     fontSize: 12,
-    marginLeft: 6,
+    marginLeft: 8,
   },
+  legendSymbol: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    width: 15,
+    textAlign: 'center',
+  },
+
+  // Ad Banner
+  adContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    padding: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderTopWidth: 1,
+    borderColor: '#334155',
+  },
+  adContent: {
+    height: 50,
+    backgroundColor: '#334155',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+    borderStyle: 'dashed'
+  },
+  adText: {
+    color: '#94a3b8',
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 1
+  }
 });

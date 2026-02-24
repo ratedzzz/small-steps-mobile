@@ -8,7 +8,7 @@ interface HabitItemProps {
   habit: Habit;
   onToggle: (id: string) => void;
   onEdit?: (habit: Habit) => void;
-  onArchive?: () => void; // Added onArchive prop
+  onArchive?: () => void;
 }
 
 const { width, height } = Dimensions.get("window");
@@ -52,19 +52,10 @@ export default function HabitItem({ habit, onToggle, onEdit, onArchive }: HabitI
     <>
       <View style={[styles.container, { backgroundColor: cardBackgroundColor }]}>
         
-        {/* PRESS to Toggle, LONG PRESS to Edit... WAIT! 
-            We need to decide: 
-            - Tap = Toggle
-            - Long Press = Archive? Or Edit?
-            
-            Let's do: 
-            - Tap Text -> Edit
-            - Tap Checkbox -> Toggle
-            - Long Press Text -> Archive
-        */}
+        {/* Tapping text triggers EDIT. Long Press triggers ARCHIVE. */}
         <Pressable
-          onPress={() => onEdit && onEdit(habit)} // Tap text to Edit
-          onLongPress={onArchive} // Long press text to Archive
+          onPress={() => onEdit && onEdit(habit)} 
+          onLongPress={onArchive} 
           delayLongPress={500}
           style={styles.contentArea}
           android_ripple={{ color: "#ffffff33" }}
@@ -72,7 +63,7 @@ export default function HabitItem({ habit, onToggle, onEdit, onArchive }: HabitI
           {/* Dot color */}
           <View style={[styles.dot, { backgroundColor: habit.color || '#FFF' }]} />
           
-          {/* NAME */}
+          {/* NAME / TITLE DISPLAY */}
           <Text
             style={[
               styles.name, 
@@ -82,7 +73,8 @@ export default function HabitItem({ habit, onToggle, onEdit, onArchive }: HabitI
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {habit.name} 
+            {/* FIX: Check for title (new) OR name (old) */}
+            {habit.title || (habit as any).name || "Untitled Habit"}
           </Text>
         </Pressable>
 

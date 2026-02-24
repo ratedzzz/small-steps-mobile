@@ -60,7 +60,7 @@ export default function ArchivesScreen() {
                     className="w-4 h-12 rounded-full mr-4" 
                   />
                   <View>
-                    <Text className="text-lg font-semibold text-gray-800">{habit.name}</Text>
+                    <Text className="text-lg font-semibold text-gray-800">{habit.title}</Text>
                     <Text className="text-gray-400 text-xs">
                        Completed: {habit.completedDates.length} times
                     </Text>

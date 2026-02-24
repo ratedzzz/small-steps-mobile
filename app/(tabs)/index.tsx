@@ -39,7 +39,21 @@ const AdBanner = () => (
   </View>
 );
 
-// --- CONTENT ---
+// --- SUBSCRIBE BOX COMPONENT ---
+const SubscribeBox = ({ onPress }: { onPress: () => void }) => (
+  <View style={styles.subscribeContainer}>
+    <View style={styles.subscribeContent}>
+      <View>
+        <Text style={styles.subscribeTitle}>Go Premium</Text>
+        <Text style={styles.subscribeSubtitle}>Remove ads & unlock stats</Text>
+      </View>
+      <TouchableOpacity style={styles.subscribeButton} onPress={onPress}>
+        <Text style={styles.subscribeButtonText}>Upgrade</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
 const quotes = [
   { text: "Small steps lead to big changes.", author: "Fred DeVito" },
   { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
@@ -78,19 +92,14 @@ export default function HomeScreen() {
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
 
-  // Today's Date (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
-
-  // --- FILTERING (Hide Archived Items) ---
   const activeHabits = habits.filter((h) => !h.archived);
   const activeGoals = goals.filter((g) => !g.archived);
 
-  // Calculate progress based on ACTIVE habits only
   const completedToday = useMemo(() => {
     return activeHabits.filter((h) => h.completedDates?.includes(today)).length;
   }, [activeHabits, today]);
 
-  // --- AVATAR LOGIC ---
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return Alert.alert("Permission needed", "We need access to your photos.");
@@ -113,13 +122,10 @@ export default function HomeScreen() {
     try {
       const response = await fetch(uri);
       const blob = await response.blob();
-      
       const storageRef = ref(storage, `users/${auth.currentUser.uid}/avatar.jpg`);
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
-      
       await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      // Update Store
       setUser(auth.currentUser.uid, auth.currentUser.displayName || userName, downloadURL);
       Alert.alert("Success", "Avatar updated!");
     } catch (error) {
@@ -138,7 +144,6 @@ export default function HomeScreen() {
     }
   };
 
-  // --- ITEM HANDLERS ---
   const handleToggle = (habitId: string) => {
     toggleHabit(habitId);
   };
@@ -148,35 +153,18 @@ export default function HomeScreen() {
     setShowAddHabit(true);
   };
 
-  // --- NEW: Archive Handlers ---
   const handleArchiveHabit = (id: string) => {
-    Alert.alert(
-      "Archive Habit",
-      "Are you sure? This will move to the Archives screen.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Archive", 
-          style: "destructive", 
-          onPress: () => updateHabit(id, { archived: true }) 
-        }
-      ]
-    );
+    Alert.alert("Archive Habit", "Move to archives?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Archive", style: "destructive", onPress: () => updateHabit(id, { archived: true }) }
+    ]);
   };
 
   const handleArchiveGoal = (id: string) => {
-    Alert.alert(
-      "Archive Goal",
-      "Are you sure? This will move to the Archives screen.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Archive", 
-          style: "destructive", 
-          onPress: () => updateGoal(id, { archived: true }) 
-        }
-      ]
-    );
+    Alert.alert("Archive Goal", "Move to archives?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Archive", style: "destructive", onPress: () => updateGoal(id, { archived: true }) }
+    ]);
   };
 
   const handleSaveHabit = (partial: Partial<Habit>) => {
@@ -184,7 +172,7 @@ export default function HomeScreen() {
       updateHabit(partial.id, partial);
     } else {
       addHabit({
-        name: partial.name ?? "New Habit",
+        title: partial.title ?? "New Habit", 
         color: partial.color ?? "#1DA27E",
         reminderTime: partial.reminderTime,
       });
@@ -213,186 +201,88 @@ export default function HomeScreen() {
 
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.scrollContent} // Adjusted padding here
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
         >
           {/* HEADER */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.title, { color: "#001244", fontSize: 28 }]}>
-                Hi, {userName || "Friend"}!
+              <Text style={styles.title}>Hi, {userName || "Friend"}!</Text>
+              <Text style={styles.subtitle}>
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
               </Text>
-              <Text style={[styles.subtitle, { color: "#005086" }]}>
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
-              
-              {/* LOGOUT BUTTON */}
               <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                <Ionicons name="log-out-outline" size={16} color="#005086" />
+                <Ionicons name="log-out-outline" size={16} color="#22d3ee" />
                 <Text style={styles.logoutText}>Sign Out</Text>
               </TouchableOpacity>
             </View>
-            
-            {/* Avatar - TAP TO UPLOAD */}
             <TouchableOpacity onPress={handlePickAvatar} disabled={uploading}>
               <View style={styles.avatarContainer}>
-                {uploading ? (
-                  <ActivityIndicator color="#FFF" style={{ marginTop: 15 }} />
-                ) : userAvatar ? (
-                  <Image source={{ uri: userAvatar }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarInitials}>
-                      {(userName?.[0] || "U").toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-                {/* Camera Icon Overlay */}
-                <View style={styles.cameraIcon}>
-                  <Ionicons name="camera" size={12} color="#FFF" />
-                </View>
+                {uploading ? <ActivityIndicator color="#FFF" style={{ marginTop: 15 }} /> : 
+                 userAvatar ? <Image source={{ uri: userAvatar }} style={styles.avatar} /> : 
+                 <View style={styles.avatarPlaceholder}><Text style={styles.avatarInitials}>{(userName?.[0] || "U").toUpperCase()}</Text></View>}
+                <View style={styles.cameraIcon}><Ionicons name="camera" size={12} color="#FFF" /></View>
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* Daily Quote */}
-          <View style={styles.glassCard}>
+          {/* QUOTE */}
+          <View style={styles.quoteBox}>
             <Text style={styles.quoteIcon}>"</Text>
             <Text style={styles.quoteText}>"{dailyQuote.text}"</Text>
             <Text style={styles.author}>— {dailyQuote.author}</Text>
           </View>
 
-          {/* Progress Summary */}
+          {/* PROGRESS */}
           {activeHabits.length > 0 && (
-            <View style={styles.glassCard}>
+            <View style={styles.progressBox}>
               <Text style={styles.progressTitle}>Habits Completed Today</Text>
-              <Text style={styles.progressNumber}>
-                {completedToday}/{activeHabits.length}
-              </Text>
+              <Text style={styles.progressNumber}>{completedToday}/{activeHabits.length}</Text>
             </View>
           )}
 
-          {/* --- HABITS SECTION --- */}
-          <View style={styles.sectionContainer}>
+          {/* HABITS */}
+          <View style={styles.sectionBox}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Daily Habits</Text>
-              <Pressable
-                onPress={() => {
-                  setSelectedHabit(null);
-                  setShowAddHabit(true);
-                }}
-                style={({ pressed }) => [
-                  styles.addButton,
-                  { opacity: pressed ? 0.8 : 1 },
-                ]}
-              >
+              <Pressable onPress={() => { setSelectedHabit(null); setShowAddHabit(true); }} style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={styles.addButtonText}>+ Add</Text>
               </Pressable>
             </View>
-
             {activeHabits.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>
-                  No habits yet. Start by adding your first small step!
-                </Text>
-              </View>
+              <View style={styles.emptyState}><Text style={styles.emptyText}>No habits yet. Start by adding your first small step!</Text></View>
             ) : (
-              // Mapped over Active Habits
-              activeHabits.map((habit) => (
-                <HabitItem
-                  key={habit.id}
-                  habit={habit}
-                  onToggle={handleToggle}
-                  onEdit={handleEditHabit} 
-                  // Pass the archive handler (Note: HabitItem needs to accept this!)
-                  onArchive={() => handleArchiveHabit(habit.id)}
-                />
-              ))
+              activeHabits.map((habit) => <HabitItem key={habit.id} habit={habit} onToggle={handleToggle} onEdit={handleEditHabit} onArchive={() => handleArchiveHabit(habit.id)} />)
             )}
           </View>
 
-          {/* --- GOALS SECTION --- */}
-          <View style={[styles.glassCard, { marginTop: 10 }]}>
+          {/* GOALS */}
+          <View style={styles.sectionBox}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Goals</Text>
-              <Pressable
-                onPress={() => {
-                  setSelectedGoal(null);
-                  setShowAddGoal(true);
-                }}
-                style={({ pressed }) => [
-                  styles.addButton,
-                  { opacity: pressed ? 0.8 : 1 },
-                ]}
-              >
+              <Pressable onPress={() => { setSelectedGoal(null); setShowAddGoal(true); }} style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={styles.addButtonText}>+ Add</Text>
               </Pressable>
             </View>
-
             {activeGoals.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>
-                  Set a goal to work towards!
-                </Text>
-              </View>
+              <View style={styles.emptyState}><Text style={styles.emptyText}>Set a goal to work towards!</Text></View>
             ) : (
-              // Mapped over Active Goals
-              activeGoals.map((goal) => (
-                <GoalItem
-                  key={goal.id}
-                  goal={goal}
-                  darkMode={darkMode}
-                  onEdit={(g: Goal) => {
-                    setSelectedGoal(g);
-                    setShowAddGoal(true);
-                  }}
-                  // Pass the archive handler (Note: GoalItem needs to accept this!)
-                  onArchive={() => handleArchiveGoal(goal.id)}
-                />
-              ))
+              activeGoals.map((goal) => <GoalItem key={goal.id} goal={goal} darkMode={darkMode} onEdit={(g) => { setSelectedGoal(g); setShowAddGoal(true); }} onArchive={() => handleArchiveGoal(goal.id)} />)
             )}
           </View>
 
-          {/* Pro CTA */}
-          {!pro && (
-            <View style={styles.proCard}>
-              <Text style={styles.proTitle}>🌟 Upgrade to Pro</Text>
-              <Text style={styles.proText}>
-                Unlock unlimited habits, advanced analytics, and more!
-              </Text>
-              <Pressable style={styles.proButton} onPress={() => Alert.alert("Coming Soon!")}>
-                <Text style={styles.proButtonText}>Learn More</Text>
-              </Pressable>
-            </View>
-          )}
+          {/* SUBSCRIBE BOX (Moved Here) */}
+          {!pro && <SubscribeBox onPress={() => Alert.alert("Coming Soon!")} />}
+
         </ScrollView>
 
-        {/* --- AD BANNER (Fixed at bottom) --- */}
+        {/* AD BANNER (Fixed at bottom) */}
         <AdBanner />
 
-        {/* --- MODALS --- */}
-        <AddHabitModal
-          visible={showAddHabit}
-          onClose={() => setShowAddHabit(false)}
-          darkMode={darkMode}
-          habit={selectedHabit}
-          onSave={handleSaveHabit}
-          onDelete={(id) => { deleteHabit(id); setShowAddHabit(false); }}
-        />
-
-        <AddGoalModal
-          visible={showAddGoal}
-          onClose={() => setShowAddGoal(false)}
-          darkMode={darkMode}
-          goal={selectedGoal}
-          onSave={handleSaveGoal}
-          onDelete={(id) => { deleteGoal(id); setShowAddGoal(false); }}
-        />
+        {/* MODALS */}
+        <AddHabitModal visible={showAddHabit} onClose={() => setShowAddHabit(false)} darkMode={darkMode} habit={selectedHabit} onSave={handleSaveHabit} onDelete={(id) => { deleteHabit(id); setShowAddHabit(false); }} />
+        <AddGoalModal visible={showAddGoal} onClose={() => setShowAddGoal(false)} darkMode={darkMode} goal={selectedGoal} onSave={handleSaveGoal} onDelete={(id) => { deleteGoal(id); setShowAddGoal(false); }} />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -400,212 +290,47 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "transparent" },
-  scrollContent: { padding: 16, paddingBottom: 20 }, // Less bottom padding since Ad is separate
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    marginTop: 10,
-    paddingHorizontal: 8,
-  },
-  avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: {width:0, height:2},
-    position: 'relative'
-  },
-  cameraIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    width: '100%',
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#005086',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitials: {
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: 0.5 },
-  subtitle: { fontSize: 16, marginTop: 4, fontWeight: "600" },
+  // Increased bottom padding to 150 to clear the Tabs and Ad Banner
+  scrollContent: { padding: 16, paddingBottom: 150 }, 
   
-  logoutButton: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0, 80, 134, 0.1)',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start'
-  },
-  logoutText: {
-    fontSize: 12,
-    color: '#005086',
-    fontWeight: 'bold'
-  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, marginTop: 10, paddingHorizontal: 8 },
+  title: { fontSize: 28, fontWeight: "800", letterSpacing: 0.5, color: "#FFFFFF" },
+  subtitle: { fontSize: 16, marginTop: 4, fontWeight: "600", color: "#E2E8F0" },
+  logoutButton: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(34, 211, 238, 0.1)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, alignSelf: 'flex-start' },
+  logoutText: { fontSize: 12, color: '#22d3ee', fontWeight: 'bold' },
+  
+  avatarContainer: { width: 60, height: 60, borderRadius: 30, overflow: 'hidden', borderWidth: 2, borderColor: '#22d3ee', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: {width:0, height:2}, position: 'relative' },
+  cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', width: '100%', height: 20, justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: '100%', height: '100%' },
+  avatarPlaceholder: { width: '100%', height: '100%', backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
+  avatarInitials: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
 
-  glassCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.45)", 
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    alignItems: "center",
-    shadowColor: "#001244",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  quoteIcon: {
-    fontSize: 40,
-    lineHeight: 40,
-    color: "#001244",
-    opacity: 0.5,
-    marginBottom: -10,
-  },
-  quoteText: {
-    fontSize: 16,
-    fontStyle: "italic",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 6,
-    color: "#001244",
-  },
-  author: {
-    fontSize: 13,
-    fontWeight: '600',
-    opacity: 0.7,
-    color: "#005086",
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
-    color: "#001244",
-  },
-  progressNumber: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#005086",
-  },
-  sectionContainer: {
-    marginBottom: 20,
-    paddingHorizontal: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    width: '100%',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#001244",
-  },
-  addButton: {
-    backgroundColor: "#001244",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  addButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  emptyState: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: "center",
-    color: "#001244",
-    opacity: 0.6,
-  },
-  proCard: {
-    backgroundColor: "#F1C453",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  proTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#001244",
-  },
-  proText: {
-    fontSize: 14,
-    marginBottom: 16,
-    lineHeight: 20,
-    color: "#001244",
-    opacity: 0.8,
-  },
-  proButton: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-  },
-  proButtonText: {
-    fontWeight: "bold",
-    fontSize: 14,
-    color: "#001244",
-  },
-  // AD BANNER STYLES
-  adContainer: {
-    width: '100%',
-    padding: 10,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  adContent: {
-    height: 50,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CCC',
-    borderStyle: 'dashed'
-  },
-  adText: {
-    color: '#888',
-    fontWeight: 'bold',
-    fontSize: 12,
-    letterSpacing: 1
-  }
+  quoteBox: { backgroundColor: "rgba(15, 23, 42, 0.7)", padding: 16, borderRadius: 16, marginBottom: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#22d3ee" },
+  quoteIcon: { fontSize: 40, lineHeight: 40, color: "#22d3ee", opacity: 0.8, marginBottom: -10 },
+  quoteText: { fontSize: 16, fontStyle: "italic", textAlign: "center", lineHeight: 22, marginBottom: 6, color: "#FFFFFF" },
+  author: { fontSize: 13, fontWeight: '600', opacity: 0.8, color: "#22d3ee" },
+
+  progressBox: { backgroundColor: "rgba(15, 23, 42, 0.7)", padding: 16, borderRadius: 16, marginBottom: 16, alignItems: "center", borderWidth: 1.5, borderColor: "#22d3ee" },
+  progressTitle: { fontSize: 16, fontWeight: "700", marginBottom: 4, color: "#FFFFFF" },
+  progressNumber: { fontSize: 36, fontWeight: "800", color: "#22d3ee" },
+
+  sectionBox: { backgroundColor: "rgba(15, 23, 42, 0.7)", padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1.5, borderColor: "#22d3ee", width: '100%' },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  sectionTitle: { fontSize: 22, fontWeight: "800", color: "#FFFFFF", textAlign: 'left' },
+  addButton: { backgroundColor: "#22d3ee", paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+  addButtonText: { color: "#0f172a", fontWeight: "bold", fontSize: 14 },
+  emptyState: { paddingVertical: 20, alignItems: "center" },
+  emptyText: { fontSize: 16, textAlign: "center", color: "#E2E8F0", opacity: 0.8 },
+
+  // Subscribe Box Styles
+  subscribeContainer: { marginBottom: 20, padding: 16, backgroundColor: '#F1C453', borderRadius: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
+  subscribeContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  subscribeTitle: { fontSize: 18, fontWeight: '800', color: '#001244' },
+  subscribeSubtitle: { fontSize: 12, color: '#001244', marginTop: 2 },
+  subscribeButton: { backgroundColor: '#001244', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  subscribeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
+
+  adContainer: { position: 'absolute', bottom: 0, width: '100%', padding: 10, backgroundColor: 'rgba(15, 23, 42, 0.95)', borderTopWidth: 1, borderColor: '#334155' },
+  adContent: { height: 50, backgroundColor: '#334155', borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#475569', borderStyle: 'dashed' },
+  adText: { color: '#94a3b8', fontWeight: 'bold', fontSize: 12, letterSpacing: 1 }
 });

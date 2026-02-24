@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useApp } from "../store";
 import { Goal } from "../types";
-import { MOUNTAIN_PALETTE } from "../theme";
+
+// Removed useApp/addGoal from here to prevent duplicates. 
+// The Home Screen handles the saving now.
 
 interface AddGoalModalProps {
   visible: boolean;
@@ -19,15 +20,16 @@ const COLORS = [
   "#FF3DFC", "#82FF58", "#3856FF", "#FC2347",
 ];
 
-// Force Dark Navy Theme
+// Updated Theme: Dark Slate with Cyan Accents (Matches Home)
 const THEME = {
-  bg: MOUNTAIN_PALETTE[4], // #001244
+  bg: "#1e293b",       // Slate 800 (Complimentary to Home's Slate 900)
   text: "#FFFFFF",
-  inputBg: "#002a5c",      // Lighter Navy
-  border: "#005086",
+  inputBg: "#334155",  // Slate 700
+  border: "#475569",   // Slate 600
   placeholder: "#94A3B8",
-  primary: "#1DA27E",
-  cancelBg: "#334155",
+  primary: "#22d3ee",  // Cyan (High Contrast)
+  primaryText: "#0f172a", // Dark text on Cyan button
+  cancelBg: "#475569",
 };
 
 function toDisplayDate(raw?: string): string {
@@ -51,7 +53,7 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("#F1C453");
   const [dueDisplay, setDueDisplay] = useState(""); 
-  const { addGoal } = useApp();
+  
   const isEditing = !!goal;
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
   }, [goal, visible]);
 
   const handleDateChange = (text: string) => {
+    // Auto-formatting MM-DD-YYYY
     const cleaned = text.replace(/[^0-9]/g, "");
     let formatted = "";
     if (cleaned.length > 0) {
@@ -82,24 +85,34 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
     
     let storedDate = undefined;
     if (dueDisplay.length > 0) {
-      if (dueDisplay.replace(/[^0-9]/g, "").length !== 8) return Alert.alert("Incomplete Date", "Format: MM-DD-YYYY");
+      if (dueDisplay.replace(/[^0-9]/g, "").length !== 8) {
+        return Alert.alert("Invalid Date", "Format must be MM-DD-YYYY");
+      }
       storedDate = toStoreDate(dueDisplay);
+
+      // --- VALIDATION: Check for Past Date ---
+      if (storedDate) {
+        const today = new Date().toISOString().split('T')[0];
+        if (storedDate < today) {
+          return Alert.alert("Invalid Date", "You cannot set a goal target in the past! Time travel isn't supported yet.");
+        }
+      }
     }
 
     const payload = { title: title.trim(), color, dueDate: storedDate };
 
-    if (isEditing && goal && onSave) {
-      onSave({ id: goal.id, ...payload });
-    } else {
-      // FIX: Don't rely on a return value from addGoal
-      addGoal(payload);
-      if (onSave) onSave(payload);
+    if (onSave) {
+      if (isEditing && goal) {
+        onSave({ id: goal.id, ...payload });
+      } else {
+        onSave(payload);
+      }
     }
     onClose();
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: THEME.bg }]}>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -107,7 +120,10 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
 
             <Text style={[styles.label, { color: THEME.text }]}>Goal Title</Text>
             <TextInput
-              value={title} onChangeText={setTitle} placeholder="Read 12 Books" placeholderTextColor={THEME.placeholder}
+              value={title} 
+              onChangeText={setTitle} 
+              placeholder="Read 12 Books" 
+              placeholderTextColor={THEME.placeholder}
               style={[styles.input, { backgroundColor: THEME.inputBg, borderColor: THEME.border, color: THEME.text }]}
             />
 
@@ -126,8 +142,12 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
 
             <Text style={[styles.label, { color: THEME.text }]}>Target Date (MM-DD-YYYY)</Text>
             <TextInput
-              value={dueDisplay} onChangeText={handleDateChange} placeholder="12-31-2025" placeholderTextColor={THEME.placeholder}
-              keyboardType="number-pad" maxLength={10}
+              value={dueDisplay} 
+              onChangeText={handleDateChange} 
+              placeholder="12-31-2025" 
+              placeholderTextColor={THEME.placeholder}
+              keyboardType="number-pad" 
+              maxLength={10}
               style={[styles.input, { backgroundColor: THEME.inputBg, borderColor: THEME.border, color: THEME.text }]}
             />
 
@@ -136,7 +156,7 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
                 <Text style={{ color: "#FFF", fontWeight: "bold" }}>Cancel</Text>
               </Pressable>
               <Pressable onPress={handleSave} style={[styles.button, { backgroundColor: THEME.primary }]}>
-                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Save</Text>
+                <Text style={{ color: THEME.primaryText, fontWeight: "bold" }}>Save</Text>
               </Pressable>
             </View>
 
@@ -154,9 +174,9 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  container: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "90%" },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", padding: 16 },
+  container: { borderRadius: 24, padding: 24, maxHeight: "90%", width: '100%' },
+  title: { fontSize: 24, fontWeight: "800", marginBottom: 20, textAlign: 'center' },
   label: { fontSize: 14, fontWeight: "600", marginBottom: 8, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 8 },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 24 },

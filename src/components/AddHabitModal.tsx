@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Modal, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
-import { useApp } from "../store";
 import { Habit } from "../types";
-import { MOUNTAIN_PALETTE } from "../theme";
+
+// Removed useApp/addHabit to prevent duplicates.
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -19,19 +19,21 @@ const COLORS = [
   "#FF3DFC", "#82FF58", "#3856FF", "#FC2347"
 ];
 
-// Force Dark Navy Theme
+// Updated Theme: Dark Slate with Cyan Accents
 const THEME = {
-  bg: MOUNTAIN_PALETTE[4], // #001244
+  bg: "#1e293b",       
   text: "#FFFFFF",
-  inputBg: "#002a5c",      // Lighter Navy input
-  border: "#005086",       // Border color
+  inputBg: "#334155",  
+  border: "#475569",      
   placeholder: "#94A3B8",
-  primary: "#1DA27E",      // Mint Green Button
-  cancelBg: "#334155",
+  primary: "#22d3ee",      
+  primaryText: "#0f172a",
+  cancelBg: "#475569",
 };
 
 function formatTimeInput(raw: string): string {
   const digits = raw.replace(/[^\d]/g, "");
+  // Insert colon automatically
   if (digits.length <= 2) return digits;
   const h = digits.slice(0, digits.length - 2);
   const m = digits.slice(-2);
@@ -43,12 +45,12 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
   const [color, setColor] = useState("#1DA27E");
   const [reminderTime, setReminderTime] = useState("");
   const [amPm, setAmPm] = useState<"AM" | "PM">("AM");
-  const { addHabit } = useApp();
+  
   const isEditing = !!habit;
 
   useEffect(() => {
     if (habit) {
-      setName(habit.name);
+      setName(habit.title);
       setColor(habit.color);
       if (habit.reminderTime) {
         const [hours, minutes] = habit.reminderTime.split(":").map(Number);
@@ -74,27 +76,41 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
     if (parts.length < 2) return undefined;
     const [hoursStr, minutesStr] = parts;
     let hours = parseInt(hoursStr, 10);
+    
     if (Number.isNaN(hours)) return undefined;
     if (period === "PM" && hours !== 12) hours += 12;
     else if (period === "AM" && hours === 12) hours = 0;
+    
     return `${hours.toString().padStart(2, "0")}:${minutesStr.padStart(2, "0").slice(0, 2)}`;
   };
 
   const handleSave = () => {
     if (!name.trim()) return Alert.alert("Name required", "Please enter a habit name.");
-    const time24 = convertTo24Hour(reminderTime, amPm);
-    const payload = { name: name.trim(), color, reminderTime: time24 };
     
-    if (isEditing && onSave && habit) onSave({ id: habit.id, ...payload });
-    else {
-      const created = addHabit(payload);
-      if (onSave && created) onSave(created);
+    // --- VALIDATION: Check for valid time ---
+    if (reminderTime.includes(":")) {
+        const [h, m] = reminderTime.split(":").map(Number);
+        if (m > 59) return Alert.alert("Invalid Time", "Minutes cannot be more than 59.");
+        if (h > 12 || h === 0) return Alert.alert("Invalid Time", "Please enter hours 1-12.");
+    } else if (reminderTime.length > 0) {
+        return Alert.alert("Invalid Time", "Please use format H:MM (e.g. 7:30)");
+    }
+
+    const time24 = convertTo24Hour(reminderTime, amPm);
+    const payload = { title: name.trim(), color, reminderTime: time24 };
+    
+    if (onSave) {
+        if (isEditing && habit) {
+            onSave({ id: habit.id, ...payload });
+        } else {
+            onSave(payload);
+        }
     }
     onClose();
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: THEME.bg }]}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -122,15 +138,19 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
             <Text style={[styles.label, { color: THEME.text }]}>Reminder Time</Text>
             <View style={styles.timeRow}>
               <TextInput
-                value={reminderTime} onChangeText={(t) => setReminderTime(formatTimeInput(t))}
-                placeholder="7:30" placeholderTextColor={THEME.placeholder} keyboardType="number-pad"
+                value={reminderTime} 
+                onChangeText={(t) => setReminderTime(formatTimeInput(t))}
+                placeholder="7:30" 
+                placeholderTextColor={THEME.placeholder} 
+                keyboardType="number-pad"
+                maxLength={5}
                 style={[styles.timeInput, { backgroundColor: THEME.inputBg, borderColor: THEME.border, color: THEME.text }]}
               />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {["AM", "PM"].map((p) => (
                   <Pressable key={p} onPress={() => setAmPm(p as any)}
                     style={[styles.amPmButton, { backgroundColor: amPm === p ? THEME.primary : THEME.inputBg, borderColor: THEME.border }]}>
-                    <Text style={{ color: amPm === p ? "#FFF" : THEME.text, fontWeight: "bold" }}>{p}</Text>
+                    <Text style={{ color: amPm === p ? THEME.primaryText : THEME.text, fontWeight: "bold" }}>{p}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -141,7 +161,7 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
                 <Text style={{ color: "#FFF", fontWeight: "bold" }}>Cancel</Text>
               </Pressable>
               <Pressable onPress={handleSave} style={[styles.button, { backgroundColor: THEME.primary }]}>
-                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Save</Text>
+                <Text style={{ color: THEME.primaryText, fontWeight: "bold" }}>Save</Text>
               </Pressable>
             </View>
 
@@ -159,9 +179,9 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.6)", justifyContent: "flex-end" },
-  container: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "90%" },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.7)", justifyContent: "center", padding: 16 },
+  container: { borderRadius: 24, padding: 24, maxHeight: "90%", width: '100%' },
+  title: { fontSize: 24, fontWeight: "800", marginBottom: 20, textAlign: 'center' },
   label: { fontSize: 14, fontWeight: "600", marginBottom: 8, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 8 },
   timeRow: { flexDirection: "row", gap: 12, marginBottom: 8, alignItems: "center" },
