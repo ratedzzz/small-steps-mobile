@@ -1,9 +1,9 @@
 export interface Habit {
   id: string;
-  title: string;       // We are standardizing on 'title' (was 'name')
+  title: string;
   color: string;
-  icon?: string;       // Added: The store needs this
-  streak: number;      // Added: The store needs this
+  icon?: string;       
+  streak: number;      
   completedDates: string[];
   reminderTime: string | null; 
   archived: boolean;
@@ -14,21 +14,21 @@ export interface Goal {
   title: string;
   color: string;
   dueDate: string;
-  completed: boolean;  // Added: For checkbox logic
+  completed: boolean; 
   progress: number;
   total: number;
-  createdAt?: string;  // Kept from your old file
+  createdAt?: string; 
   archived: boolean;
   relatedHabitIds: string[];
 }
 
 export interface JournalEntry {
   id?: string;
-  date: string;        // YYYY-MM-DD
-  content: string;     // We are standardizing on 'content' (was 'text')
+  date: string;       
+  content: string;    
   mood: 'happy' | 'neutral' | 'sad' | 'excited' | 'tired';
   tags: string[];
-  habitId?: string;    // Kept from your old file
+  habitId?: string;   
 }
 
 export interface Badge {
@@ -36,5 +36,5 @@ export interface Badge {
   name: string;
   description: string;
   icon: string;
-  unlockedAt?: string; // ISO Date string
+  unlockedAt?: string; 
 }

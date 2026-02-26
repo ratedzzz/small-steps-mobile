@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Modal, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
+// import * as Notifications from 'expo-notifications'; // COMMENTED OUT TO FIX CRASH
 import { Habit } from "../types";
 
-// Removed useApp/addHabit to prevent duplicates.
+// --- NOTIFICATIONS HANDLER (Temporarily Disabled for Expo Go) ---
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,
+//     shouldPlaySound: true,
+//     shouldSetBadge: false,
+//     shouldShowBanner: true,
+//     shouldShowList: true,
+//   }),
+// });
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -11,6 +21,7 @@ interface AddHabitModalProps {
   habit?: Habit | null;
   onSave?: (habit: Partial<Habit>) => void;
   onDelete?: (habitId: string) => void;
+  onArchive?: (habitId: string) => void;
 }
 
 const COLORS = [
@@ -19,7 +30,6 @@ const COLORS = [
   "#FF3DFC", "#82FF58", "#3856FF", "#FC2347"
 ];
 
-// Updated Theme: Dark Slate with Cyan Accents
 const THEME = {
   bg: "#1e293b",       
   text: "#FFFFFF",
@@ -33,14 +43,13 @@ const THEME = {
 
 function formatTimeInput(raw: string): string {
   const digits = raw.replace(/[^\d]/g, "");
-  // Insert colon automatically
   if (digits.length <= 2) return digits;
   const h = digits.slice(0, digits.length - 2);
   const m = digits.slice(-2);
   return `${parseInt(h, 10)}:${m}`;
 }
 
-export default function AddHabitModal({ visible, onClose, habit, onSave, onDelete }: AddHabitModalProps) {
+export default function AddHabitModal({ visible, onClose, habit, onSave, onDelete, onArchive }: AddHabitModalProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#1DA27E");
   const [reminderTime, setReminderTime] = useState("");
@@ -84,10 +93,9 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
     return `${hours.toString().padStart(2, "0")}:${minutesStr.padStart(2, "0").slice(0, 2)}`;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return Alert.alert("Name required", "Please enter a habit name.");
     
-    // --- VALIDATION: Check for valid time ---
     if (reminderTime.includes(":")) {
         const [h, m] = reminderTime.split(":").map(Number);
         if (m > 59) return Alert.alert("Invalid Time", "Minutes cannot be more than 59.");
@@ -97,6 +105,23 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
     }
 
     const time24 = convertTo24Hour(reminderTime, amPm);
+    
+    // --- SCHEDULE NOTIFICATION (Temporarily Disabled) ---
+    if (time24) {
+        // try {
+        //     const [hours, minutes] = time24.split(':').map(Number);
+        //     await Notifications.scheduleNotificationAsync({
+        //         content: {
+        //             title: "Time for your habit!",
+        //             body: `Don't forget: ${name.trim()}`,
+        //         },
+        //         trigger: { hour: hours, minute: minutes, repeats: true } as any,
+        //     });
+        // } catch (e) {
+        //     console.log("Notification Error (Requires Dev Build):", e);
+        // }
+    }
+
     const payload = { title: name.trim(), color, reminderTime: time24 };
     
     if (onSave) {
@@ -165,10 +190,19 @@ export default function AddHabitModal({ visible, onClose, habit, onSave, onDelet
               </Pressable>
             </View>
 
-            {isEditing && onDelete && habit && (
-              <Pressable onPress={() => onDelete(habit.id)} style={[styles.deleteButton, { backgroundColor: "#EF4444" }]}>
-                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Delete Habit</Text>
-              </Pressable>
+            {isEditing && habit && (
+              <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
+                  {onArchive && (
+                      <Pressable onPress={() => onArchive(habit.id)} style={[styles.actionButton, { backgroundColor: "#F59E0B" }]}>
+                        <Text style={{ color: "#FFF", fontWeight: "bold" }}>Archive</Text>
+                      </Pressable>
+                  )}
+                  {onDelete && (
+                      <Pressable onPress={() => onDelete(habit.id)} style={[styles.actionButton, { backgroundColor: "#EF4444" }]}>
+                        <Text style={{ color: "#FFF", fontWeight: "bold" }}>Delete</Text>
+                      </Pressable>
+                  )}
+              </View>
             )}
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -189,5 +223,5 @@ const styles = StyleSheet.create({
   amPmButton: { paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12, borderWidth: 1 },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 24 },
   button: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  deleteButton: { padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  actionButton: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

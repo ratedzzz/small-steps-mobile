@@ -30,13 +30,17 @@ const calculateStreak = (dates: string[]) => {
   if (!currentCheck) return 0; 
 
   let streak = 0;
-  for (const dateStr of sorted) {
-    if (dateStr === currentCheck) {
-      streak++;
-      // FIXED: Explicitly typed as Date to stop the error
-      const dateObj: Date = new Date(currentCheck);
-      dateObj.setDate(dateObj.getDate() - 1);
-      currentCheck = dateObj.toISOString().split('T')[0];
+  // Simple streak calc: just check if yesterday exists in list
+  // (A full implementation requires looping backwards day by day)
+  let checkDate = new Date(currentCheck);
+  
+  while (true) {
+    const dateStr = checkDate.toISOString().split('T')[0];
+    if (dates.includes(dateStr)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+        break;
     }
   }
   return streak;
@@ -132,7 +136,7 @@ export const useApp = create<AppState>()(
         
         habits.forEach(h => batch.set(doc(db, "users", uid, "habits", h.id), sanitize(h)));
         goals.forEach(g => batch.set(doc(db, "users", uid, "goals", g.id), sanitize(g)));
-        entries.forEach(e => batch.set(doc(db, "users", uid, "entries", e.date), sanitize(e)));
+        entries.forEach(e => batch.set(doc(db, "users", uid, "entries", e.id || e.date), sanitize(e)));
         badges.forEach(b => batch.set(doc(db, "users", uid, "badges", b.id), sanitize(b)));
 
         await batch.commit();
@@ -144,7 +148,7 @@ export const useApp = create<AppState>()(
           id,
           title: h.title?.trim() || "New Habit",
           color: h.color || "#1DA27E",
-          reminderTime: h.reminderTime ?? null, // FIXED: Null handling
+          reminderTime: h.reminderTime ?? null,
           archived: false,
           streak: 0,
           completedDates: [],
@@ -167,6 +171,7 @@ export const useApp = create<AppState>()(
 
       toggleHabit: (id) => {
         const date = new Date().toISOString().split('T')[0];
+        // We need to access state inside set to get current values
         set((state) => {
             const updatedHabits = state.habits.map((h) => {
                 if (h.id !== id) return h;
@@ -180,13 +185,15 @@ export const useApp = create<AppState>()(
                     streak: calculateStreak(newDates) 
                 };
             });
+            
+            // Side effect: Save to cloud
+            const updatedHabit = updatedHabits.find(h => h.id === id);
+            if (state.userId && updatedHabit) {
+                 saveToCloud(state.userId, "habits", id, updatedHabit);
+            }
+            
             return { habits: updatedHabits };
         });
-
-        const { userId, habits } = get();
-        const updated = habits.find(h => h.id === id);
-        if (userId && updated) saveToCloud(userId, "habits", id, updated);
-        
         get().checkBadges();
       },
 
@@ -249,20 +256,17 @@ export const useApp = create<AppState>()(
             const currentBadgeIds = state.badges.map(b => b.id);
             const newBadges: Badge[] = [];
             
-            // 1. First Step
             const hasFirstStep = state.habits.some(h => h.completedDates.length > 0);
             if (!currentBadgeIds.includes('first-step') && hasFirstStep) {
                  const def = BADGE_DEFINITIONS.find(b => b.id === 'first-step');
                  if (def) newBadges.push({ ...def, unlockedAt: new Date().toISOString() });
             }
 
-            // 2. Goal Setter
             if (!currentBadgeIds.includes('goal-setter') && state.goals.length > 0) {
                  const def = BADGE_DEFINITIONS.find(b => b.id === 'goal-setter');
                  if (def) newBadges.push({ ...def, unlockedAt: new Date().toISOString() });
             }
 
-            // 3. Streaks
             const maxStreak = Math.max(0, ...state.habits.map(h => h.streak));
             if (!currentBadgeIds.includes('streak-3') && maxStreak >= 3) {
                  const def = BADGE_DEFINITIONS.find(b => b.id === 'streak-3');
@@ -270,11 +274,11 @@ export const useApp = create<AppState>()(
             }
 
             if (newBadges.length > 0) {
-                 const { userId } = get();
+                 const { userId } = state; // Access userId from current state
                  if(userId) newBadges.forEach(b => saveToCloud(userId, "badges", b.id, b));
+                 return { badges: [...state.badges, ...newBadges] };
             }
-
-            return { badges: [...state.badges, ...newBadges] };
+            return {};
         });
       }
     }),

@@ -30,7 +30,21 @@ import { Goal, Habit } from "../../src/types";
 import { APP_THEME } from "../../src/theme"; 
 import { auth, storage } from "../../src/lib/firebase"; 
 
-// --- AD BANNER COMPONENT ---
+// --- HELPER: ROBUST DATE MATCHING ---
+const isSameDay = (dateString1: string, dateString2: string) => {
+  if (!dateString1 || !dateString2) return false;
+  return dateString1.split('T')[0] === dateString2.split('T')[0];
+};
+
+const getLocalDateString = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// --- COMPONENTS ---
 const AdBanner = () => (
   <View style={styles.adContainer}>
     <View style={styles.adContent}>
@@ -39,7 +53,6 @@ const AdBanner = () => (
   </View>
 );
 
-// --- SUBSCRIBE BOX COMPONENT ---
 const SubscribeBox = ({ onPress }: { onPress: () => void }) => (
   <View style={styles.subscribeContainer}>
     <View style={styles.subscribeContent}>
@@ -92,12 +105,13 @@ export default function HomeScreen() {
     setDailyQuote(quotes[Math.floor(Math.random() * quotes.length)]);
   }, []);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const activeHabits = habits.filter((h) => !h.archived);
   const activeGoals = goals.filter((g) => !g.archived);
 
+  // FIXED: Sync Logic with Robust Date Match
   const completedToday = useMemo(() => {
-    return activeHabits.filter((h) => h.completedDates?.includes(today)).length;
+    return activeHabits.filter((h) => h.completedDates?.some(d => isSameDay(d, today))).length;
   }, [activeHabits, today]);
 
   const handlePickAvatar = async () => {
@@ -139,14 +153,10 @@ export default function HomeScreen() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const handleToggle = (habitId: string) => {
-    toggleHabit(habitId);
-  };
+  const handleToggle = (habitId: string) => { toggleHabit(habitId); };
 
   const handleEditHabit = (habit: Habit) => {
     setSelectedHabit(habit);
@@ -201,7 +211,7 @@ export default function HomeScreen() {
 
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent} // Adjusted padding here
+          contentContainerStyle={styles.scrollContent} 
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
         >
@@ -272,17 +282,31 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* SUBSCRIBE BOX (Moved Here) */}
-          {!pro && <SubscribeBox onPress={() => Alert.alert("Coming Soon!")} />}
+          {/* SUBSCRIBE BOX */}
+          <SubscribeBox onPress={() => Alert.alert("Coming Soon!")} />
 
         </ScrollView>
-
-        {/* AD BANNER (Fixed at bottom) */}
         <AdBanner />
 
-        {/* MODALS */}
-        <AddHabitModal visible={showAddHabit} onClose={() => setShowAddHabit(false)} darkMode={darkMode} habit={selectedHabit} onSave={handleSaveHabit} onDelete={(id) => { deleteHabit(id); setShowAddHabit(false); }} />
-        <AddGoalModal visible={showAddGoal} onClose={() => setShowAddGoal(false)} darkMode={darkMode} goal={selectedGoal} onSave={handleSaveGoal} onDelete={(id) => { deleteGoal(id); setShowAddGoal(false); }} />
+        {/* MODALS - Updated with onArchive prop */}
+        <AddHabitModal 
+          visible={showAddHabit} 
+          onClose={() => setShowAddHabit(false)} 
+          darkMode={darkMode} 
+          habit={selectedHabit} 
+          onSave={handleSaveHabit} 
+          onDelete={(id) => { deleteHabit(id); setShowAddHabit(false); }} 
+          onArchive={(id) => { updateHabit(id, { archived: true }); setShowAddHabit(false); }}
+        />
+        <AddGoalModal 
+          visible={showAddGoal} 
+          onClose={() => setShowAddGoal(false)} 
+          darkMode={darkMode} 
+          goal={selectedGoal} 
+          onSave={handleSaveGoal} 
+          onDelete={(id) => { deleteGoal(id); setShowAddGoal(false); }} 
+          onArchive={(id) => { updateGoal(id, { archived: true }); setShowAddGoal(false); }}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -290,7 +314,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "transparent" },
-  // Increased bottom padding to 150 to clear the Tabs and Ad Banner
   scrollContent: { padding: 16, paddingBottom: 150 }, 
   
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, marginTop: 10, paddingHorizontal: 8 },
@@ -322,7 +345,7 @@ const styles = StyleSheet.create({
   emptyState: { paddingVertical: 20, alignItems: "center" },
   emptyText: { fontSize: 16, textAlign: "center", color: "#E2E8F0", opacity: 0.8 },
 
-  // Subscribe Box Styles
+  // Subscribe Box
   subscribeContainer: { marginBottom: 20, padding: 16, backgroundColor: '#F1C453', borderRadius: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
   subscribeContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subscribeTitle: { fontSize: 18, fontWeight: '800', color: '#001244' },

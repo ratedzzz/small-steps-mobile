@@ -6,7 +6,8 @@ import {
   ScrollView,
   Pressable,
   TouchableOpacity,
-  Alert
+  Alert, 
+  Dimensions
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,7 +23,28 @@ import AddHabitModal from "../../src/components/AddHabitModal";
 import AddGoalModal from "../../src/components/AddGoalModal";
 import { Habit, Goal } from "../../src/types";
 
-// --- AD BANNER ---
+// --- HELPER: ROBUST DATE MATCHING ---
+const isSameDay = (dateString1: string, dateString2: string) => {
+  if (!dateString1 || !dateString2) return false;
+  return dateString1.split('T')[0] === dateString2.split('T')[0];
+};
+
+const getLocalDateString = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// --- HELPER: Journal Preview ---
+const getJournalPreview = (text: string) => {
+  if (!text || text.trim() === "") return null;
+  const words = text.trim().split(/\s+/);
+  return words.slice(0, 2).join(" ") + (words.length > 2 ? "..." : "");
+};
+
+// --- COMPONENTS ---
 const AdBanner = () => (
   <View style={styles.adContainer}>
     <View style={styles.adContent}>
@@ -31,63 +53,72 @@ const AdBanner = () => (
   </View>
 );
 
-// --- HELPER TO GET JOURNAL PREVIEW ---
-const getJournalPreview = (text: string) => {
-  if (!text) return "";
-  const words = text.trim().split(/\s+/);
-  return words.slice(0, 2).join(" ") + (words.length > 2 ? "..." : "");
-};
+const SubscribeBox = () => (
+  <View style={styles.subscribeContainer}>
+    <View style={styles.subscribeContent}>
+      <View>
+        <Text style={styles.subscribeTitle}>Go Premium</Text>
+        <Text style={styles.subscribeSubtitle}>Remove ads & unlock stats</Text>
+      </View>
+      <TouchableOpacity style={styles.subscribeButton} onPress={() => Alert.alert("Coming Soon!")}>
+        <Text style={styles.subscribeButtonText}>Upgrade</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
 
 export default function CalendarScreen() {
   const router = useRouter();
-  // Fixed: Changed 'journals' to 'entries' to match your store
+  
   const { habits, goals, entries, deleteHabit, updateHabit, deleteGoal, updateGoal } = useApp();
   
-  // State
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString()); 
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
 
-  // --- FILTER DATA FOR SELECTED DATE ---
-  const completedHabits = habits.filter(h => h.completedDates?.includes(selectedDate) && !h.archived);
-  const uncompletedHabits = habits.filter(h => !h.completedDates?.includes(selectedDate) && !h.archived);
-  const journalEntry = entries.find(j => j.date === selectedDate);
+  // --- FILTER DATA ---
+  const completedHabits = habits.filter(h => 
+    !h.archived && h.completedDates?.some(d => isSameDay(d, selectedDate))
+  );
+  
+  const uncompletedHabits = habits.filter(h => 
+    !h.archived && !h.completedDates?.some(d => isSameDay(d, selectedDate))
+  );
+  
+  const journalEntry = entries.find(j => isSameDay(j.date, selectedDate));
+  const journalText = journalEntry ? (journalEntry.content || (journalEntry as any).text || "") : "";
+  const journalPreview = getJournalPreview(journalText);
 
   // --- CUSTOM DAY COMPONENT ---
   const CustomDay = ({ date, state }: { date?: DateData; state?: string }) => {
     if (!date) return <View />;
     
     const isSelected = date.dateString === selectedDate;
-    const isToday = date.dateString === new Date().toISOString().split("T")[0];
+    const isToday = date.dateString === getLocalDateString();
     
-    // Habit Dots
-    const habitDots = habits
-      .filter(h => h.completedDates?.includes(date.dateString) && !h.archived)
-      .map(h => h.color);
-      
-    // Goal Logic: [ Start, ] End, - Middle
-    const activeGoals = goals.filter(g => !g.archived && g.dueDate);
-    const goalMarkers = activeGoals.map(g => {
-        // 1. If this is the Due Date -> `]`
-        if (g.dueDate === date.dateString) return { char: ']', color: g.color };
-        
-        // 2. If this is the Creation Date (fallback to Today if missing) -> `[`
-        const createdDate = g.createdAt ? g.createdAt.split('T')[0] : '';
-        if (createdDate === date.dateString) return { char: '[', color: g.color };
+    // 1. Goal Markers
+    const activeGoals = goals.filter(g => !g.archived);
+    const dayMarkers = activeGoals.map(g => {
+        const start = g.createdAt ? g.createdAt.split('T')[0] : '';
+        const end = g.dueDate || '';
+        const current = date.dateString;
 
-        // 3. If in between -> `-` (Slash/Dash)
-        if (createdDate && g.dueDate) {
-            if (date.dateString > createdDate && date.dateString < g.dueDate) {
-                return { char: '—', color: g.color };
-            }
+        if (start && end && current >= start && current <= end) {
+            return {
+                color: g.color,
+                char: current === start ? '[' : (current === end ? ']' : '—'),
+                isDash: current !== start && current !== end
+            };
         }
         return null;
-    }).filter(Boolean) as { char: string, color: string }[];
+    }).filter(Boolean);
 
-    // Limit goal markers to avoid UI explosion (max 3)
-    const displayGoals = goalMarkers.slice(0, 3); 
+    // 2. Habit Dots
+    const habitDots = habits
+      .filter(h => !h.archived && h.completedDates?.some(d => isSameDay(d, date.dateString)))
+      .map(h => h.color);
 
     return (
       <TouchableOpacity 
@@ -98,13 +129,20 @@ export default function CalendarScreen() {
             isToday && !isSelected && styles.dayToday
         ]}
       >
-        {/* Goal Markers Above */}
-        <View style={styles.goalOverlay}>
-            {displayGoals.map((m, i) => (
-                <Text key={i} style={{ color: m.color, fontSize: 10, fontWeight: 'bold', lineHeight: 10 }}>
-                    {m.char}
-                </Text>
-            ))}
+        {/* GOAL SYMBOLS (Stacked Above) */}
+        <View style={styles.goalStack}>
+            {dayMarkers.slice(0, 3).map((m, i) => {
+                 if (!m) return null; // FIX: Safety check removes TS error
+                 return (
+                    <View key={i} style={styles.markerRow}>
+                        {m.isDash ? (
+                            <View style={[styles.dash, { backgroundColor: m.color }]} />
+                        ) : (
+                            <Text style={[styles.bracket, { color: m.color }]}>{m.char}</Text>
+                        )}
+                    </View>
+                 );
+            })}
         </View>
 
         <Text style={[
@@ -112,10 +150,10 @@ export default function CalendarScreen() {
             state === 'disabled' ? styles.dayTextDisabled : {},
             isSelected ? styles.dayTextSelected : {}
         ]}>
-          {date.day}
+            {date.day}
         </Text>
 
-        {/* Habit Dots Below */}
+        {/* HABIT DOTS (Stacked Below) */}
         <View style={styles.dotRow}>
           {habitDots.slice(0, 4).map((color, i) => (
             <View key={i} style={[styles.dot, { backgroundColor: color }]} />
@@ -130,7 +168,7 @@ export default function CalendarScreen() {
       <PageFlower screen="calendar" />
       
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             
             {/* 1. CALENDAR BOX */}
             <View style={styles.calendarWrapper}>
@@ -140,16 +178,17 @@ export default function CalendarScreen() {
                     dayComponent={({ date, state }: any) => <CustomDay date={date} state={state} />}
                     theme={{
                         calendarBackground: 'transparent',
-                        textSectionTitleColor: '#22d3ee', // Cyan headers
+                        textSectionTitleColor: '#22d3ee', 
                         monthTextColor: '#FFFFFF',
                         arrowColor: '#22d3ee',
                         textDayHeaderFontWeight: 'bold'
                     }}
                     enableSwipeMonths
+                    style={{ height: 400 }} // Increased height
                 />
             </View>
 
-            {/* 2. HABITS COMPLETED TODAY */}
+            {/* 2. HABITS COMPLETED */}
             <View style={styles.sectionBox}>
                 <Text style={styles.sectionTitle}>Habits Completed Today</Text>
                 {completedHabits.length === 0 ? (
@@ -165,32 +204,12 @@ export default function CalendarScreen() {
                             <Text style={styles.itemText}>
                                 {h.title || (h as any).name || "Untitled"}
                             </Text>
-                            <Ionicons name="checkmark-circle" size={20} color={h.color} />
                         </Pressable>
                     ))
                 )}
             </View>
 
-            {/* 3. JOURNAL ENTRY BOX */}
-            <TouchableOpacity 
-                style={styles.journalBox}
-                onPress={() => {
-                   router.push('/journal'); 
-                }}
-            >
-                <View style={styles.journalHeader}>
-                    <Text style={styles.journalTitle}>Today's Journal</Text>
-                    <Ionicons name="pencil" size={16} color="#22d3ee" />
-                </View>
-                {/* Fixed: Use .content instead of .text */}
-                <Text style={styles.journalPreview}>
-                    {journalEntry 
-                        ? `"${getJournalPreview(journalEntry.content)}"` 
-                        : "No journal entry today"}
-                </Text>
-            </TouchableOpacity>
-
-            {/* 4. HABITS NOT COMPLETED */}
+            {/* 3. HABITS NOT COMPLETED */}
             <View style={styles.sectionBox}>
                 <Text style={styles.sectionTitle}>Habits Not Yet Completed</Text>
                 {uncompletedHabits.length === 0 ? (
@@ -206,54 +225,54 @@ export default function CalendarScreen() {
                             <Text style={styles.itemText}>
                                 {h.title || (h as any).name || "Untitled"}
                             </Text>
-                            {/* Empty circle for uncompleted */}
-                            <View style={[styles.circleOutline, { borderColor: h.color }]} />
                         </Pressable>
                     ))
                 )}
             </View>
 
-            {/* 5. LEGEND */}
-            <View style={styles.legendBox}>
-                <Text style={styles.legendHeader}>LEGEND</Text>
-                
-                <View style={styles.legendRow}>
-                    {/* Column 1: Habits */}
-                    <View style={styles.legendCol}>
-                        <Text style={styles.legendSubHeader}>Habits</Text>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.dot, { backgroundColor: '#F1C453', width: 8, height: 8 }]} />
-                            <Text style={styles.legendText}>Completed</Text>
+            {/* 4. GOAL BOX */}
+            <View style={styles.goalBox}>
+                <Text style={styles.goalBoxTitle}>Goals</Text>
+                {goals.filter(g => !g.archived).length === 0 ? (
+                    <Text style={styles.emptyText}>No active goals</Text>
+                ) : (
+                    goals.filter(g => !g.archived).map((goal) => (
+                        <View key={goal.id} style={styles.goalListRow}>
+                            <Text style={styles.goalHeader}>{goal.title || "Untitled Goal"}</Text>
+                            <View style={styles.goalLegendItems}>
+                                <Text style={styles.goalLegendLine}>
+                                    <Text style={{ color: goal.color, fontWeight: 'bold' }}>[ </Text> Start
+                                </Text>
+                                <Text style={styles.goalLegendLine}>
+                                    <Text style={{ color: goal.color, fontWeight: 'bold' }}>] </Text> End
+                                </Text>
+                                <Text style={styles.goalLegendLine}>
+                                    <Text style={{ color: goal.color, fontWeight: 'bold' }}>— </Text> In Progress
+                                </Text>
+                            </View>
                         </View>
-                        {/* Dot under Day explanation */}
-                        <View style={styles.legendItem}>
-                            <View style={[styles.dot, { backgroundColor: '#F1C453', width: 4, height: 4, marginTop: 4 }]} />
-                            <Text style={styles.legendText}>Under Date = Done</Text>
-                        </View>
-                    </View>
-
-                    {/* Column 2: Goals */}
-                    <View style={styles.legendCol}>
-                        <Text style={styles.legendSubHeader}>Goals</Text>
-                        <View style={styles.legendItem}>
-                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>[</Text>
-                            <Text style={styles.legendText}>Start</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>—</Text>
-                            <Text style={styles.legendText}>In Progress</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <Text style={[styles.legendSymbol, { color: '#22C55E' }]}>]</Text>
-                            <Text style={styles.legendText}>Completed/Due</Text>
-                        </View>
-                    </View>
-                </View>
+                    ))
+                )}
             </View>
 
+            {/* 5. JOURNAL PREVIEW */}
+            <TouchableOpacity 
+                style={styles.journalBox}
+                onPress={() => router.push('/journal')}
+            >
+                <View style={styles.journalHeader}>
+                    <Text style={styles.journalTitle}>Today's Journal</Text>
+                    <Ionicons name="pencil" size={16} color="#001244" />
+                </View>
+                <Text style={styles.journalPreview}>
+                    {journalPreview ? `"${journalPreview}"` : "Tap here to write your first entry..."}
+                </Text>
+            </TouchableOpacity>
+
+            {/* 6. SUBSCRIBE BOX */}
+            <SubscribeBox />
+
         </ScrollView>
-        
-        {/* AD BANNER */}
         <AdBanner />
 
         {/* MODALS */}
@@ -267,8 +286,8 @@ export default function CalendarScreen() {
             setShowHabitModal(false);
           }}
           onDelete={(id) => { deleteHabit(id); setShowHabitModal(false); }}
+          onArchive={(id) => { updateHabit(id, { archived: true }); setShowHabitModal(false); }}
         />
-        
         <AddGoalModal
           visible={showGoalModal} 
           onClose={() => setShowGoalModal(false)}
@@ -279,8 +298,8 @@ export default function CalendarScreen() {
              setShowGoalModal(false);
           }}
           onDelete={(id) => { deleteGoal(id); setShowGoalModal(false); }}
+          onArchive={(id) => { updateGoal(id, { archived: true }); setShowGoalModal(false); }}
         />
-
       </SafeAreaView>
     </LinearGradient>
   );
@@ -288,9 +307,9 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "transparent" },
-  scrollContent: { padding: 16, paddingBottom: 100 }, // Space for Ad
+  scrollContent: { padding: 16, paddingBottom: 120 }, 
   
-  // Custom Calendar Styling
+  // Calendar Styling
   calendarWrapper: {
     backgroundColor: "rgba(15, 23, 42, 0.7)",
     borderRadius: 16,
@@ -300,52 +319,65 @@ const styles = StyleSheet.create({
     borderColor: "#22d3ee",
   },
   dayContainer: {
-    width: 32,
-    height: 44, // Taller to fit markers above/below
+    width: 44, // Wider
+    height: 52, // Taller
     alignItems: 'center',
     justifyContent: 'center',
   },
   daySelected: {
-    backgroundColor: 'rgba(34, 211, 238, 0.2)', // Cyan tint
-    borderRadius: 8,
+    backgroundColor: 'rgba(34, 211, 238, 0.2)',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#22d3ee'
   },
   dayToday: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
+    borderRadius: 12,
   },
   dayText: {
     color: '#E2E8F0',
     fontWeight: '600',
     fontSize: 14,
+    zIndex: 2,
+    marginTop: 2
   },
-  dayTextSelected: {
-    color: '#22d3ee',
+  dayTextSelected: { color: '#22d3ee', fontWeight: 'bold' },
+  dayTextDisabled: { color: '#475569' },
+
+  // Markers
+  goalStack: {
+    position: 'absolute',
+    top: 4,
+    width: '100%',
+    alignItems: 'center',
+    gap: 1
+  },
+  markerRow: {
+    flexDirection: 'row',
+    height: 6, // Specific height for bracket/dash
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  bracket: {
+    fontSize: 10,
     fontWeight: 'bold',
+    lineHeight: 10,
   },
-  dayTextDisabled: {
-    color: '#475569',
+  dash: {
+    width: 12,
+    height: 2,
+    borderRadius: 1,
   },
   dotRow: {
     flexDirection: 'row',
     gap: 2,
-    marginTop: 2,
-    height: 4,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  goalOverlay: {
-    flexDirection: 'row',
     position: 'absolute',
-    top: 2,
-    gap: 1,
+    bottom: 4
   },
+  dot: { width: 4, height: 4, borderRadius: 2 },
 
-  // Section Boxes (Consistent with Home)
+  // Sections
   sectionBox: {
     backgroundColor: "rgba(15, 23, 42, 0.7)",
     padding: 16,
@@ -354,17 +386,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#22d3ee",
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    marginBottom: 12,
-  },
-  emptyText: {
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    fontSize: 14,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#FFFFFF", marginBottom: 12 },
+  emptyText: { color: '#94A3B8', fontStyle: 'italic', fontSize: 14 },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -373,28 +396,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
   },
-  itemText: {
-    flex: 1,
-    color: '#FFF',
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  largeDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  circleOutline: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-  },
+  itemText: { flex: 1, color: '#FFF', marginLeft: 10, fontSize: 16, fontWeight: '600' },
+  largeDot: { width: 12, height: 12, borderRadius: 6 },
 
-  // Journal Box (Specific Style)
+  // Journal
   journalBox: {
-    backgroundColor: '#F1C453', // Yellow accent from your palette
+    backgroundColor: '#F1C453',
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
@@ -402,69 +409,34 @@ const styles = StyleSheet.create({
     borderColor: '#F59E0B',
     elevation: 3,
   },
-  journalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  journalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#001244',
-  },
-  journalPreview: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    color: '#001244',
-    opacity: 0.8,
-  },
+  journalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  journalTitle: { fontSize: 18, fontWeight: '800', color: '#001244' },
+  journalPreview: { fontSize: 16, fontStyle: 'italic', color: '#001244', opacity: 0.8 },
 
-  // Legend
-  legendBox: {
+  // Goals
+  goalBox: {
     backgroundColor: "rgba(15, 23, 42, 0.9)",
     padding: 16,
     borderRadius: 16,
-    marginTop: 10,
-    marginBottom: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: '#22d3ee',
   },
-  legendHeader: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    letterSpacing: 1,
+  goalBoxTitle: {
+    color: '#22d3ee', fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center', letterSpacing: 1,
   },
-  legendRow: {
-    flexDirection: 'row',
-  },
-  legendCol: {
-    flex: 1,
-  },
-  legendSubHeader: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    height: 20,
-  },
-  legendText: {
-    color: '#CBD5E1',
-    fontSize: 12,
-    marginLeft: 8,
-  },
-  legendSymbol: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    width: 15,
-    textAlign: 'center',
-  },
+  goalListRow: { marginBottom: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)', paddingBottom: 10 },
+  goalHeader: { fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#FFFFFF' },
+  goalLegendItems: { flexDirection: 'row', justifyContent: 'space-between' },
+  goalLegendLine: { color: '#CBD5E1', fontSize: 12 },
+
+  // Subscribe Box
+  subscribeContainer: { marginBottom: 20, padding: 16, backgroundColor: '#F1C453', borderRadius: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
+  subscribeContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  subscribeTitle: { fontSize: 18, fontWeight: '800', color: '#001244' },
+  subscribeSubtitle: { fontSize: 12, color: '#001244', marginTop: 2 },
+  subscribeButton: { backgroundColor: '#001244', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  subscribeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
 
   // Ad Banner
   adContainer: {
@@ -486,10 +458,5 @@ const styles = StyleSheet.create({
     borderColor: '#475569',
     borderStyle: 'dashed'
   },
-  adText: {
-    color: '#94a3b8',
-    fontWeight: 'bold',
-    fontSize: 12,
-    letterSpacing: 1
-  }
+  adText: { color: '#94a3b8', fontWeight: 'bold', fontSize: 12, letterSpacing: 1 }
 });

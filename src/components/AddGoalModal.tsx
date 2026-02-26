@@ -2,9 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Goal } from "../types";
 
-// Removed useApp/addGoal from here to prevent duplicates. 
-// The Home Screen handles the saving now.
-
 interface AddGoalModalProps {
   visible: boolean;
   onClose: () => void;
@@ -12,6 +9,7 @@ interface AddGoalModalProps {
   goal?: Goal | null;
   onSave?: (goal: Partial<Goal>) => void;
   onDelete?: (goalId: string) => void;
+  onArchive?: (goalId: string) => void;
 }
 
 const COLORS = [
@@ -20,15 +18,14 @@ const COLORS = [
   "#FF3DFC", "#82FF58", "#3856FF", "#FC2347",
 ];
 
-// Updated Theme: Dark Slate with Cyan Accents (Matches Home)
 const THEME = {
-  bg: "#1e293b",       // Slate 800 (Complimentary to Home's Slate 900)
+  bg: "#1e293b",       
   text: "#FFFFFF",
-  inputBg: "#334155",  // Slate 700
-  border: "#475569",   // Slate 600
+  inputBg: "#334155",  
+  border: "#475569",   
   placeholder: "#94A3B8",
-  primary: "#22d3ee",  // Cyan (High Contrast)
-  primaryText: "#0f172a", // Dark text on Cyan button
+  primary: "#22d3ee",  
+  primaryText: "#0f172a", 
   cancelBg: "#475569",
 };
 
@@ -49,7 +46,7 @@ function toStoreDate(display: string): string | undefined {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete }: AddGoalModalProps) {
+export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete, onArchive }: AddGoalModalProps) {
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("#F1C453");
   const [dueDisplay, setDueDisplay] = useState(""); 
@@ -69,7 +66,6 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
   }, [goal, visible]);
 
   const handleDateChange = (text: string) => {
-    // Auto-formatting MM-DD-YYYY
     const cleaned = text.replace(/[^0-9]/g, "");
     let formatted = "";
     if (cleaned.length > 0) {
@@ -90,11 +86,10 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
       }
       storedDate = toStoreDate(dueDisplay);
 
-      // --- VALIDATION: Check for Past Date ---
       if (storedDate) {
         const today = new Date().toISOString().split('T')[0];
         if (storedDate < today) {
-          return Alert.alert("Invalid Date", "You cannot set a goal target in the past! Time travel isn't supported yet.");
+          return Alert.alert("Invalid Date", "You cannot set a goal target in the past!");
         }
       }
     }
@@ -160,10 +155,19 @@ export default function AddGoalModal({ visible, onClose, goal, onSave, onDelete 
               </Pressable>
             </View>
 
-            {isEditing && onDelete && goal && (
-              <Pressable onPress={() => onDelete(goal.id)} style={[styles.deleteButton, { backgroundColor: "#EF4444" }]}>
-                <Text style={{ color: "#FFF", fontWeight: "bold" }}>Delete Goal</Text>
-              </Pressable>
+            {isEditing && goal && (
+              <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
+                  {onArchive && (
+                      <Pressable onPress={() => onArchive(goal.id)} style={[styles.actionButton, { backgroundColor: "#F59E0B" }]}>
+                        <Text style={{ color: "#FFF", fontWeight: "bold" }}>Archive</Text>
+                      </Pressable>
+                  )}
+                  {onDelete && (
+                      <Pressable onPress={() => onDelete(goal.id)} style={[styles.actionButton, { backgroundColor: "#EF4444" }]}>
+                        <Text style={{ color: "#FFF", fontWeight: "bold" }}>Delete</Text>
+                      </Pressable>
+                  )}
+              </View>
             )}
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -181,5 +185,5 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 8 },
   buttonRow: { flexDirection: "row", gap: 12, marginTop: 24 },
   button: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  deleteButton: { padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  actionButton: { flex: 1, padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });
